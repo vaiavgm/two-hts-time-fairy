@@ -2,7 +2,7 @@
   "name": "two-hts-time-fairy",
   "version": "1.0.0",
   "description": "A Discord bot for the 2HTS community",
-  "main": "index.js",
+  "main": "bot.js",
   "scripts": {
     "test": "test"
   },
@@ -16,5 +16,8 @@
     "@discordjs/rest": "^0.1.0-canary.0",
     "discord-api-types": "^0.22.0",
     "discord.js": "^13.1.0"
+  },
+  "engines": {
+    "node": "16.8.0"
   }
 }
