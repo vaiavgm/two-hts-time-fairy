@@ -2,7 +2,8 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 // eslint-disable-next-line no-unused-vars
-const { clientId, guildId, token } = require('./config.json');
+const { clientId, guildId } = require('../config.json');
+const { token } = process.env.ACCESS_TOKEN;
 
 const commands = [
 	new SlashCommandBuilder().setName('ping').setDescription('Replies with pong!'),
