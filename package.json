@@ -4,8 +4,7 @@
   "description": "A Discord bot for the 2HTS community",
   "main": "bot.js",
   "scripts": {
-    "start": "node app/bot.js",
-    "test": "test"
+    "start": "node app/bot.js"
   },
   "keywords": [
     "2hts"
