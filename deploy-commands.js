@@ -17,8 +17,10 @@ const rest = new REST({ version: '9' }).setToken(token);
 (async () => {
 	try {
 		await rest.put(
+			// applicationCommands updates commands on all servers, but will take up to one hour
 			Routes.applicationCommands(clientId),
-			// Routes.applicationGuildCommands(clientId, guildId),
+			// applicationGuildCommands updates commands immediately, but only works for known guildIds (servers)
+			Routes.applicationGuildCommands(clientId, guildId),
 			{ body: commands },
 		);
 
