@@ -1,0 +1,20 @@
+{
+  "name": "two-hts-time-fairy",
+  "version": "1.0.0",
+  "description": "A Discord bot for the 2HTS community",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "keywords": [
+    "2hts"
+  ],
+  "author": "Vaia",
+  "license": "SEE LICENSE IN license.txt",
+  "dependencies": {
+    "@discordjs/builders": "^0.6.0",
+    "@discordjs/rest": "^0.1.0-canary.0",
+    "discord-api-types": "^0.22.0",
+    "discord.js": "^13.1.0"
+  }
+}
