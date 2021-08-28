@@ -1,3 +1,5 @@
+// Bot invitation link: https://discord.com/api/oauth2/authorize?client_id=881164920673165333&permissions=2147485760&scope=bot%20applications.commands
+
 require('dotenv').config();
 // Require the necessary discord.js classes
 const { Client, Intents } = require('discord.js');
@@ -16,8 +18,12 @@ client.on('interactionCreate', async interaction => {
 
 	const { commandName } = interaction;
 
-	if (commandName === 'ping') {
-		await interaction.reply('Pong!');
+	if (commandName === 'react') {
+		const message = await interaction.reply('You can react with Unicode emojis!', { fetchReply: true });
+		message.react('😄');
+	}
+	else if (commandName === 'ping') {
+		await interaction.reply('Pong!', { fetchReply: true });
 	}
 	else if (commandName === 'server') {
 		await interaction.reply('Server info.');
