@@ -19,7 +19,8 @@ client.on('interactionCreate', async interaction => {
 	const { commandName } = interaction;
 
 	if (commandName === 'react') {
-		const message = await interaction.reply('You can react with Unicode emojis!', { fetchReply: true });
+		interaction.reply('You can react with Unicode emojis 😄!');
+		const message = await interaction.fetchReply();
 		message.react('😄');
 	}
 	else if (commandName === 'ping') {

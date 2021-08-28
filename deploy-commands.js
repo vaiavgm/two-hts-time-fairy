@@ -1,9 +1,11 @@
+// to update slash commands, execute
+// node deploy-commands.js
+
 require('dotenv').config();
 
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
-// eslint-disable-next-line no-unused-vars
 const { clientId, soloTestingServer, botTestingServer } = require('./config.json');
 
 const commands = [
