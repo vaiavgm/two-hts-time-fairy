@@ -60,10 +60,10 @@ module.exports = {
     const channel = message.channel;
 
     for (const p in participants) {
-      if (p.user === message.author) {
+      if (participants[p].user === message.author) {
         await channel.send("found!");
-        if (p.cards.length > 0) {
-          await channel.send(getTheme(p.cards[0], p.cards[1], p.cards[2]));
+        if (participants[p].cards.length > 0) {
+          await channel.send(getTheme(participants[p].cards[0], participants[p].cards[1], participants[p].cards[2]));
           return;
         }
       }
