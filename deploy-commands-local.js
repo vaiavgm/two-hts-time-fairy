@@ -8,7 +8,7 @@ const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
 
 // eslint-disable-next-line no-unused-vars
-const { clientId, soloTestingServer, botTestingServer } = require("./config-local.json");
+const { clientId, soloTestingServer, botTestingServer, twohtsServer } = require("./config-local.json");
 
 
 const commands = [
@@ -27,6 +27,7 @@ const rest_requests = [];
 
 rest_requests.push(new slash_command_target_server(botTestingServer));
 rest_requests.push(new slash_command_target_server(soloTestingServer));
+rest_requests.push(new slash_command_target_server(twohtsServer));
 
 for (const rest of rest_requests) {
   (async () => {

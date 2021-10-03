@@ -94,15 +94,6 @@ client.on("interactionCreate", async interaction => {
   else if (commandName === "ping") {
     await interaction.reply("Pong!", { fetchReply: true });
   }
-  else if (commandName === "server") {
-    await interaction.reply("Server info.");
-  }
-  else if (commandName === "user") {
-    await interaction.reply("User info.");
-  }
-  else if (commandName === "nothing") {
-    await interaction.reply("...");
-  }
   else if (commandName === "tarot") {
     const user = client.users.cache.get(interaction.member.user.id);
 
