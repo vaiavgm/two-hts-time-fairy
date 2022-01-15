@@ -85,6 +85,15 @@ client.on("interactionCreate", async interaction => {
 
   const { commandName } = interaction;
 
+  const user = client.users.cache.get(interaction.member.user.id);
+  const userId = user.username + "#" + user.discriminator;
+  const admins = ["Vaia#6573", "antik#0959"];
+
+  let isAdmin = false;
+  if (admins.includes(userId)) {
+    isAdmin = true;
+  }
+
   if (commandName === "react") {
     interaction.reply("You can react with Unicode emojis 😄!");
 
@@ -95,7 +104,6 @@ client.on("interactionCreate", async interaction => {
     await interaction.reply("Pong!", { fetchReply: true });
   }
   else if (commandName === "tarot") {
-    const user = client.users.cache.get(interaction.member.user.id);
 
     const result = await client.commands.get("tarot").tarot(user);
     user.send(result).catch(console.error);
@@ -103,9 +111,34 @@ client.on("interactionCreate", async interaction => {
 
   }
   else if (commandName === "tarotmore") {
-    const user = client.users.cache.get(interaction.member.user.id);
+
     const result = await client.commands.get("tarot").tarotmore(user);
     await interaction.reply({ content: result, ephemeral: true });
+  }
+  else if (commandName === "gendom3") {
+    const modifier = interaction.options.getString("modifier");
+
+    const result = await client.commands.get("gendom3").provideModifier(modifier, user);
+    user.send(result).catch(console.error);
+    await interaction.reply("🎲");
+  }
+  else if (commandName === "admin" && isAdmin) {
+    // module.exports name needs to match slashcommand name for this to work
+    const app = interaction.options.getString("application");
+    const cmd = interaction.options.getString("command");
+
+    let result = "Unknown app or command.";
+
+    switch (cmd) {
+    case "reset":
+      result = await client.commands.get(app).reset();
+      break;
+    case "start":
+      result = await client.commands.get(app).start();
+      break;
+    }
+
+    await interaction.reply({ content: result, ephemeral: false });
   }
 });
 

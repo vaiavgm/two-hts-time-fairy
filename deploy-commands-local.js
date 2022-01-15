@@ -13,6 +13,20 @@ const { clientId, soloTestingServer, botTestingServer, twohtsServer } = require(
 
 const commands = [
   new SlashCommandBuilder().setName("tarot").setDescription("Draws a Major Arcanum card for the special theme!"),
+  new SlashCommandBuilder().setName("gendom3").setDescription("Provide a modifier and receive a random genre with a random modifier!")
+    .addStringOption(option =>
+      option.setName("modifier")
+        .setDescription("Your chosen modifier/adjective (e.g. \"dank\")")
+        .setRequired(true)),
+  new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.")
+    .addStringOption(option =>
+      option.setName("application")
+        .setDescription("Which application do you want to control? (e.g. \"gendom3\")")
+        .setRequired(true).addChoice("gendom3", "gendom3"))
+    .addStringOption(option =>
+      option.setName("command")
+        .setDescription("Which command do you want to execute? (e.g. \"start\")")
+        .setRequired(true).addChoice("start", "start").addChoice("reset", "reset")),
 ]
   .map(command => command.toJSON());
 
