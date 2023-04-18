@@ -94,35 +94,39 @@ client.on("interactionCreate", async interaction => {
     isAdmin = true;
   }
 
-  if (commandName === "react") {
+  /* eslint-disable no-case-declarations */
+  switch (commandName) {
+  case "time":
+    let result = await client.commands.get("time").time();
+    await interaction.reply(result);
+    break;
+  case "react":
     interaction.reply("You can react with Unicode emojis 😄!");
-
     const message = await interaction.fetchReply();
     message.react("😄");
-  }
-  else if (commandName === "ping") {
+    break;
+  case "ping":
     await interaction.reply("Pong!", { fetchReply: true });
-  }
-  else if (commandName === "tarot") {
-
-    const result = await client.commands.get("tarot").tarot(user);
+    break;
+  case "tarot":
+    result = await client.commands.get("tarot").tarot(user);
     user.send(result).catch(console.error);
     await interaction.reply({ content: "🎴" });
-
-  }
-  else if (commandName === "tarotmore") {
-
-    const result = await client.commands.get("tarot").tarotmore(user);
+    break;
+  case "tarotmore":
+    result = await client.commands.get("tarot").tarotmore(user);
     await interaction.reply({ content: result, ephemeral: true });
-  }
-  else if (commandName === "gendom3") {
+    break;
+  case "gendom3":
     const modifier = interaction.options.getString("modifier");
-
-    const result = await client.commands.get("gendom3").provideModifier(modifier, user);
+    result = await client.commands.get("gendom3").provideModifier(modifier, user);
     user.send(result).catch(console.error);
     await interaction.reply("🎲");
+    break;
+  default:
   }
-  else if (commandName === "admin" && isAdmin) {
+
+  if (commandName === "admin" && isAdmin) {
     // module.exports name needs to match slashcommand name for this to work
     const app = interaction.options.getString("application");
     const cmd = interaction.options.getString("command");
