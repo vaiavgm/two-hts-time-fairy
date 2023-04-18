@@ -1,4 +1,4 @@
-// to update slash commands, execute
+// to update slash commands for the FakeFairy, execute
 // node deploy-commands-local.js
 
 require("dotenv").config();
@@ -13,6 +13,8 @@ const { clientId, soloTestingServer, botTestingServer, twohtsServer } = require(
 
 const commands = [
     new SlashCommandBuilder().setName("tarot").setDescription("Draws a Major Arcanum card for the special theme!"),
+    new SlashCommandBuilder().setName("ping").setDescription("Replies with pong!"),
+    new SlashCommandBuilder().setName("react").setDescription("Reacts with emoji! (hopefully)"),
     new SlashCommandBuilder().setName("time").setDescription("Provides time-related and compo information utility"),
     new SlashCommandBuilder().setName("gendom3").setDescription("Provide a modifier and receive a random genre with a random modifier!")
         .addStringOption(option =>
