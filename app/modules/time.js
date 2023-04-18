@@ -68,12 +68,16 @@ function handle2HTSTime()
     return message;
 }
 
+const { SlashCommandBuilder } = require("@discordjs/builders");
+
 module.exports = {
     name: "time",
-    description: "shows the time until the next compo",
+    description: "this is a time command",
 
-    async time()
+    data: new SlashCommandBuilder().setName("time").setDescription("Shows the time until the next compo"),
+
+    async execute(interaction)
     {
-        return handle2HTSTime();
+        await interaction.reply(handle2HTSTime());
     },
 };

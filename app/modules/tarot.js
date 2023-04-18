@@ -19,6 +19,9 @@ class Arcana
     }
 }
 
+let arcanaCards = [];
+const participants = [];
+
 function randomTime()
 {
     const times = ["past", "present", "future"];
@@ -26,9 +29,6 @@ function randomTime()
 
     return arcanumTime;
 }
-
-const participants = [];
-
 
 function getArcana()
 {
@@ -59,54 +59,66 @@ function getArcana()
     return itlCards;
 }
 
-let arcanaCards;
-
 function getTheme(card, arcanumTime)
 {
     return "Your theme for this week is: \n\n``" + card.card + "``, the arcanum of your``" + arcanumTime + "``!\n\n\nThe meaning of your major arcanum is:\n```" + card.description + "```";
 }
 
-module.exports = {
-    name: "tarot",
-    description: "shows your past, present, or future",
+function redraw()
+{
+    arcanaCards = getArcana();
+}
 
-    async redraw()
+function tarot(user)
+{
+    if (arcanaCards.length < 1)
     {
         arcanaCards = getArcana();
-    },
+    }
 
-    async tarot(user)
+    for (const p of participants)
     {
-        for (const p of participants)
+        if (p.user == user)
         {
-            if (p.user == user)
+            if (p.cards.length > 0)
             {
-                if (p.cards.length > 0)
-                {
-                    return getTheme(p.cards[0], p.arcanumTime);
-                }
+                return getTheme(p.cards[0], p.arcanumTime);
             }
         }
+    }
 
-        if (arcanaCards.length < 1)
-        {
-            arcanaCards = getArcana();
-        }
+    if (arcanaCards.length < 1)
+    {
+        arcanaCards = getArcana();
+    }
 
-        const arcanum = arcanaCards.splice(Math.floor(Math.random() * arcanaCards.length), 1)[0];
+    const arcanum = arcanaCards.splice(Math.floor(Math.random() * arcanaCards.length), 1)[0];
 
-        const newParticipant = new Participant(user);
-        newParticipant.cards.push(arcanum);
-        newParticipant.arcanumTime = randomTime();
+    const newParticipant = new Participant(user);
+    newParticipant.cards.push(arcanum);
+    newParticipant.arcanumTime = randomTime();
 
-        participants.push(newParticipant);
+    participants.push(newParticipant);
 
-        return getTheme(arcanum, newParticipant.arcanumTime);
+    return getTheme(arcanum, newParticipant.arcanumTime);
+}
+
+const { SlashCommandBuilder } = require("@discordjs/builders");
+
+module.exports = {
+    name: "tarot",
+    description: "bla",
+
+    data: new SlashCommandBuilder().setName("tarot").setDescription("shows your past, present, or future"),
+
+    async execute(interaction, user)
+    {
+        await user.send(tarot(user));
+        await interaction.reply("Check your PM for your theme!");
     },
 
     async tarot_deprecated(message)
     {
         await message.channel.send(await this.tarot(message.author));
     },
-
 };

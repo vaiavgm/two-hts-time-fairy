@@ -18,7 +18,8 @@
     "discord.js": "^13.1.0",
     "dotenv": "^16.0.3",
     "eslint": "^7.32.0",
-    "@typescript-eslint/parser": "^5.59.0"
+    "@typescript-eslint/parser": "^5.59.0",
+    "fs": "^0.0.2"
   },
   "engines": {
     "node": "^18.16.0",

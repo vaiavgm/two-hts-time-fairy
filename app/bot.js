@@ -18,7 +18,7 @@ if (local_testing !== undefined)
 else
 {
     temp_token = process.env.DISCORD_TOKEN;
-    console.log("activating online mode");
+    console.log("activating online mode. set 'TESTING=yes' to switch to local testing.");
 }
 
 const token = temp_token;
@@ -44,6 +44,16 @@ client.on("interactionCreate", async interaction =>
     if (!interaction.isCommand()) return;
 
     const { commandName } = interaction;
+    const command = interaction.client.commands.get(interaction.commandName);
+
+    if (!command)
+    {
+        console.error(`No command matching ${interaction.commandName} was found.`);
+        return;
+    }
+
+
+    console.log(command);
 
     const user = client.users.cache.get(interaction.member.user.id);
     const userId = user.username + "#" + user.discriminator;
@@ -59,23 +69,12 @@ client.on("interactionCreate", async interaction =>
 
     switch (commandName)
     {
-    case "time":
-        result = await client.commands.get("time").time();
-        await interaction.reply(result);
-        break;
     case "react":
         interaction.reply("You can react with Unicode emojis 😄!");
         message = await interaction.fetchReply();
         message.react("😄");
         break;
-    case "ping":
-        await interaction.reply("Pong!", { fetchReply: true });
-        break;
-    case "tarot":
-        result = await client.commands.get("tarot").tarot(user);
-        user.send(result).catch(console.error);
-        await interaction.reply({ content: "🎴" });
-        break;
+
     case "tarotmore":
         result = await client.commands.get("tarot").tarotmore(user);
         await interaction.reply({ content: result, ephemeral: true });
@@ -108,6 +107,7 @@ client.on("interactionCreate", async interaction =>
         }
         break;
     default:
+        await command.execute(interaction, user);
     }
 });
 

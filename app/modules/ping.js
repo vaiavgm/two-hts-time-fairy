@@ -1,14 +1,21 @@
 /* eslint-disable no-unused-vars */
+const { SlashCommandBuilder } = require("@discordjs/builders");
+
 module.exports = {
     name: "ping",
     description: "this is a ping command",
-    execute(message, args)
+
+    data: new SlashCommandBuilder().setName("ping").setDescription("This is a ping command"),
+
+
+    async execute(interaction, user)
     {
-        message.channel.send("pong!");
+        await interaction.reply("pong!");
+        // message.channel.send("pong!");
     },
+
     execute2(message, args)
     {
-
         message.channel.send("pong2!" + args[0]);
     },
 };

@@ -2,6 +2,7 @@
 // node deploy-commands-local.js
 
 require("dotenv").config();
+const fs = require("fs");
 
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const { REST } = require("@discordjs/rest");
@@ -12,10 +13,10 @@ const { clientId, soloTestingServer, botTestingServer, twohtsServer } = require(
 
 
 const commands = [
-    new SlashCommandBuilder().setName("tarot").setDescription("Draws a Major Arcanum card for the special theme!"),
-    new SlashCommandBuilder().setName("ping").setDescription("Replies with pong!"),
+    // new SlashCommandBuilder().setName("tarot").setDescription("Draws a Major Arcanum card for the special theme!"),
+    // new SlashCommandBuilder().setName("ping").setDescription("Replies with pong!"),
     new SlashCommandBuilder().setName("react").setDescription("Reacts with emoji! (hopefully)"),
-    new SlashCommandBuilder().setName("time").setDescription("Provides time-related and compo information utility"),
+    // new SlashCommandBuilder().setName("time").setDescription("Provides time-related and compo information utility"),
     new SlashCommandBuilder().setName("gendom3").setDescription("Provide a modifier and receive a random genre with a random modifier!")
         .addStringOption(option =>
             option.setName("modifier")
@@ -25,19 +26,30 @@ const commands = [
         .addStringOption(option =>
             option.setName("application")
                 .setDescription("Which application do you want to control? (e.g. \"gendom3\")")
-                .setRequired(true).addChoice("gendom3", "gendom3"))
+                .setRequired(true).addChoices({ name: "gendom3", value: "gendom3" }))
         .addStringOption(option =>
             option.setName("command")
                 .setDescription("Which command do you want to execute? (e.g. \"start\")")
-                .setRequired(true).addChoice("start", "start").addChoice("reset", "reset")),
+                .setRequired(true).addChoices({ name: "start", value: "start" }, { name: "reset", value: "reset" })),
 ]
     .map(command => command.toJSON());
+
+const moduleFiles = fs.readdirSync("./app/modules/").filter(file => file.endsWith(".js"));
+
+// Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
+for (const file of moduleFiles)
+{
+    const command = require(`./app/modules/${file}`);
+    if (!command || !command.data) continue;
+    console.log(command);
+    commands.push(command.data.toJSON());
+}
 
 class slash_command_target_server
 {
     constructor(serverId)
     {
-        this.request = new REST({ version: "9" }).setToken(process.env.LOCAL_TOKEN);
+        this.request = new REST({ version: "10" }).setToken(process.env.LOCAL_TOKEN);
         this.serverId = serverId;
     }
 }
