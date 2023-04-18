@@ -1,14 +1,16 @@
 /* eslint-disable no-unused-vars */
 module.exports = {
-  name: "ping",
-  description: "this is a ping command",
-  execute(message, args) {
-    message.channel.send("pong!");
-  },
-  execute2(message, args) {
+    name: "ping",
+    description: "this is a ping command",
+    execute(message, args)
+    {
+        message.channel.send("pong!");
+    },
+    execute2(message, args)
+    {
 
-    message.channel.send("pong2!" + args[0]);
-  },
+        message.channel.send("pong2!" + args[0]);
+    },
 };
 
 /* Some test code snippets
