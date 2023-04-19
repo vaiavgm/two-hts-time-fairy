@@ -43,8 +43,16 @@ function secToStr(seconds)
     return `\`${result_string}\``;
 }
 
+
+const Discord = require("discord.js");
+
 function handle2HTSTime()
 {
+    // create a new Discord embed
+    const embed = new Discord.MessageEmbed()
+        .setColor("#0099ff")
+        .setTitle("2HTS Compo Info");
+
     // get the current date and time in the specified timezone
     const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
     const _2htsCompoId = getCompoId();
@@ -52,20 +60,20 @@ function handle2HTSTime()
     const compoEnd = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 23, 15, 0);
     const compoMidnight = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate() + 1, 0, 0, 0);
 
-    let message;
-
     if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoMidnight)
     {
         const secondsUntilCompoEnd = Math.floor((compoEnd - new Date(localDate)) / 1000);
-        message = `**2HTS${_2htsCompoId}** in progress. Ends in ${secToStr(secondsUntilCompoEnd)}.\n\n${handleLinks()}`;
-    } else
+        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Ends in ${secToStr(secondsUntilCompoEnd)}.\n\n${handleLinks()}`);
+    }
+    else
     {
         const daysUntilNext2HTS = (7 - new Date(localDate).getDay() + 7) % 7;
         const secondsUntil2HTS = (daysUntilNext2HTS * 24 * 60 * 60) + ((21 * 60 * 60) - (new Date(localDate).getHours() * 60 * 60) - (new Date(localDate).getMinutes() * 60) - new Date(localDate).getSeconds());
-        message = `Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}`;
+        embed.setDescription(`Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}`);
     }
 
-    return message;
+    // return the Discord embed
+    return embed;
 }
 
 const { SlashCommandBuilder } = require("@discordjs/builders");
@@ -75,6 +83,7 @@ module.exports = {
 
     async execute(interaction)
     {
-        await interaction.reply(handle2HTSTime());
+        const embed = handle2HTSTime();
+        await interaction.reply({ embeds: [embed] });
     },
 };
