@@ -11,7 +11,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>e8edcccb-65ec-40b7-8e26-11b279e7dce5</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>app\bot.js</StartupFile>
+    <StartupFile>deploy-commands-local.js</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -31,6 +31,8 @@
     <Content Include=".env" />
     <Content Include=".eslintrc.json" />
     <Content Include="app\bot.js" />
+    <Content Include="app\modules\admin.js" />
+    <Content Include="app\modules\react.js" />
     <Content Include="app\modules\gendom3.js" />
     <Content Include="app\modules\ping.js" />
     <Content Include="app\modules\reactionrole.js" />

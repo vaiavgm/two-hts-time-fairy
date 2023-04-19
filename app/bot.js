@@ -1,11 +1,15 @@
 // Bot invitation link: https://discord.com/api/oauth2/authorize?client_id=881164920673165333&permissions=8&scope=bot%20applications.commands
 // Testing bot invite : https://discord.com/api/oauth2/authorize?client_id=888106813789200405&permissions=8&scope=bot%20applications.commands
 
+const path = require("path");
+const fs = require("fs");
+
 const { Client, Intents } = require("discord.js");
 const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
 
 require("dotenv").config();
 
+// Determine, which token to use
 const local_testing = process.env.TESTING;
 
 let temp_token = "";
@@ -13,37 +17,53 @@ let temp_token = "";
 if (local_testing !== undefined)
 {
     temp_token = process.env.LOCAL_TOKEN;
-    console.log("activating local testing mode");
+    console.log("[INFO] Activating fake bot.");
 }
 else
 {
     temp_token = process.env.DISCORD_TOKEN;
-    console.log("activating online mode. set 'TESTING=yes' to switch to local testing.");
+    console.log("[INFO] Activating online mode. set 'TESTING=yes' to switch to local testing.");
 }
 
 const token = temp_token;
 
-// Filesystem
-const fs = require("fs");
-
+// Activate slash commands
 client.commands = new Map();
-const modules = fs.readdirSync("./app/modules").filter(file => file.endsWith(".js"));
-for (const file of modules)
+const commandsPath = path.join(__dirname, "modules");
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+
+for (const file of commandFiles)
 {
-    const command = require(`./modules/${file}`);
-    client.commands.set(command.name, command);
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+
+    // Set a new item in the Collection with the key as the command name
+    // and the value as the exported module
+    if ("data" in command && "execute" in command)
+    {
+        client.commands.set(command.data.name, command);
+    }
+    else
+    {
+        console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+    }
 }
 
+// Execute once after startup
 client.once("ready", () =>
 {
-    console.log("Ready!");
+    client.user.setActivity("/time", { type: "WATCHING" });
+    console.log("[INFO] Bot is ready!");
 });
 
+// Execute on interaction
 client.on("interactionCreate", async interaction =>
 {
     if (!interaction.isCommand()) return;
 
-    const { commandName } = interaction;
+    const user = client.users.cache.get(interaction.member.user.id);
+
+    // const { commandName } = interaction;
     const command = interaction.client.commands.get(interaction.commandName);
 
     if (!command)
@@ -52,64 +72,7 @@ client.on("interactionCreate", async interaction =>
         return;
     }
 
-
-    console.log(command);
-
-    const user = client.users.cache.get(interaction.member.user.id);
-    const userId = user.username + "#" + user.discriminator;
-    const admins = ["Vaia#6573", "antik#0959"];
-
-    let isAdmin = false;
-    if (admins.includes(userId))
-    {
-        isAdmin = true;
-    }
-
-    let result, message, modifier;
-
-    switch (commandName)
-    {
-    case "react":
-        interaction.reply("You can react with Unicode emojis 😄!");
-        message = await interaction.fetchReply();
-        message.react("😄");
-        break;
-
-    case "tarotmore":
-        result = await client.commands.get("tarot").tarotmore(user);
-        await interaction.reply({ content: result, ephemeral: true });
-        break;
-    case "gendom3":
-        modifier = interaction.options.getString("modifier");
-        result = await client.commands.get("gendom3").provideModifier(modifier, user);
-        user.send(result).catch(console.error);
-        await interaction.reply("🎲");
-        break;
-    case "admin":
-        if (isAdmin)
-        {
-            const app = interaction.options.getString("application");
-            const cmd = interaction.options.getString("command");
-
-            result = "Unknown app or command.";
-
-            switch (cmd)
-            {
-            case "reset":
-                result = await client.commands.get(app).reset();
-                break;
-            case "start":
-                result = await client.commands.get(app).start();
-                break;
-            }
-
-            await interaction.reply({ content: result, ephemeral: false });
-        }
-        break;
-    default:
-        await command.execute(interaction, user);
-    }
+    await command.execute(interaction, user, client.commands);
 });
 
 client.login(token);
-

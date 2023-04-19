@@ -22,7 +22,7 @@ function get_genre_list()
 
 function get_random_theme_for_participant(participant)
 {
-    if (participant.generatedTheme !== undefined)
+    if (participant.generatedTheme !== undefined && participant.generatedTheme !== "")
     {
         return "Your theme is: ``" + participant.generatedTheme + "``";
     }
@@ -39,7 +39,7 @@ function get_random_theme_for_participant(participant)
     let max_iterations = 10;
 
 
-    while (max_iterations > 0 && random_modifier == undefined || random_modifier == participant.modifier)
+    while (max_iterations > 0 && (random_modifier == undefined || random_modifier == participant.modifier))
     {
         max_iterations--;
         if (modifier_buffer.length < 1)
@@ -58,40 +58,61 @@ function get_random_theme_for_participant(participant)
     modifier_buffer.splice(random_modifier_id, 1);
     genre_buffer.splice(random_genre_id, 1);
 
+    console.log(modifier_buffer);
+    console.log(genre_buffer);
+
     participant.generatedTheme = theme_result;
     return "Your theme is: ``" + theme_result + "``";
 }
 
-module.exports = {
-    name: "gendom3",
-    description: "Collects modifiers from participants, and hands out random genres with random modifiers",
+function provideModifier(modifier, user)
+{
+    let participant = undefined;
 
-    async provideModifier(modifier, user)
+    for (const p of participants)
     {
-        let participant = undefined;
-
-        for (const p of participants)
+        if (p.user == user)
         {
-            if (p.user == user)
-            {
-                participant = p;
-            }
+            participant = p;
         }
+    }
 
-        if (participant == undefined)
-        {
-            participant = new Participant(user);
-            participants.push(participant);
-        }
+    if (participant == undefined)
+    {
+        participant = new Participant(user);
+        participants.push(participant);
+    }
 
-        participant.modifier = modifier;
+    participant.modifier = modifier;
 
-        if (!game_has_started)
-        {
-            return "Your chosen modifier is \"" + modifier + "\"";
-        }
+    if (!game_has_started)
+    {
+        return "Your chosen modifier is \"" + modifier + "\"";
+    }
 
-        return get_random_theme_for_participant(participant);
+    console.log(participant);
+
+    return get_random_theme_for_participant(participant);
+}
+
+const { SlashCommandBuilder } = require("@discordjs/builders");
+
+module.exports = {
+    data: new SlashCommandBuilder().setName("gendom3").setDescription("Provide a modifier and receive a random genre with a random modifier!")
+        .addStringOption(option =>
+            option.setName("modifier")
+                .setDescription("Your chosen modifier/adjective (e.g. \"dank\")")
+                .setRequired(true)),
+
+
+    async execute(interaction, user)
+    {
+        participants.push(new Participant(user));
+
+        const modifier = interaction.options.getString("modifier");
+        const result = provideModifier(modifier, user);
+        user.send(result).catch(console.error);
+        await interaction.reply("\u{1F3B2}");
     },
 
     async start()

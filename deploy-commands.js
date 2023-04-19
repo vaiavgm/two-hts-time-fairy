@@ -4,62 +4,97 @@
 require("dotenv").config();
 const fs = require("fs");
 
-const { SlashCommandBuilder } = require("@discordjs/builders");
+let clientId, servers;
+const local_testing = process.env.TESTING;
+
+if (local_testing !== undefined)
+{
+    console.log("TESTING is set, updating FakeFairy");
+    ({ clientId, servers } = require("./config-local.json"));
+}
+else
+{
+    console.log("Production mode, updating TimeFairy");
+    ({ clientId, servers } = require("./config.json"));
+}
+
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v9");
 
-const { clientId, soloTestingServer, botTestingServer } = require("./config.json");
+const commands = [];
 
+// do not load the skipped slash commands, but load all other modules
+const skippedFiles = ["ping.js", "react.js", "reactionrole.js", "tarot.js", "gendom3.js"];
+const moduleFiles = fs.readdirSync("./app/modules/").filter(file => file.endsWith(".js") && !skippedFiles.some(skippedFile => file.startsWith(skippedFile)));
 
-const commands = [
-    // new SlashCommandBuilder().setName("time").setDescription("Provides time-related and compo information utility"),
-    new SlashCommandBuilder().setName("react").setDescription("Reacts with emoji! (hopefully)"),
-    // new SlashCommandBuilder().setName("ping").setDescription("Replies with pong!"),
-    new SlashCommandBuilder().setName("server").setDescription("Replies with server info!"),
-    new SlashCommandBuilder().setName("user").setDescription("Replies with user info!"),
-    new SlashCommandBuilder().setName("nothing").setDescription("Does nothing!"),
-]
-    .map(command => command.toJSON());
-
-const moduleFiles = fs.readdirSync("./app/modules/").filter(file => file.endsWith(".js"));
-
-// Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
+// Grab the SlashCommandBuilder::toJSON() output of each command's data for deployment
 for (const file of moduleFiles)
 {
     const command = require(`./app/modules/${file}`);
     if (!command || !command.data) continue;
-    console.log(command);
+    //  log output for debugging a broken command
+    // console.log(command);
     commands.push(command.data.toJSON());
 }
 
-const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-
-(async () =>
+class slash_command_target_server
 {
-    try
+    constructor(serverId)
     {
-        /* await rest.put(
-                // applicationCommands updates commands on all servers, but will take up to one hour
-                Routes.applicationCommands(clientId),
+        this.request = new REST({ version: "10" }).setToken(process.env.LOCAL_TOKEN);
+        this.serverId = serverId;
+    }
+}
+
+const rest_requests = [];
+
+// get the value for each server within config.json
+for (const server of servers)
+{
+    const values = [];
+    for (const k in server)
+    {
+        values.push(server[k]);
+    }
+
+    const server_id = values[0];
+
+    console.log(server_id);
+    rest_requests.push(new slash_command_target_server(server_id));
+}
+
+for (const rest of rest_requests)
+{
+    (async () =>
+    {
+        try
+        {
+            await rest.request.put(
+                // applicationGuildCommands updates commands immediately, but only works for known guildIds (servers)
+                Routes.applicationGuildCommands(clientId, rest.serverId),
                 { body: commands },
-            );*/
+            );
 
-        await rest.put(
-            // applicationGuildCommands updates commands immediately, but only works for known guildIds (servers)
-            Routes.applicationGuildCommands(clientId, soloTestingServer),
-            { body: commands },
-        );
+            console.log("Successfully registered application commands for server " + rest.serverId + ".");
+        }
+        catch (error)
+        {
+            console.error(error);
+        }
+    })();
+}
 
-        await rest.put(
-            // applicationGuildCommands updates commands immediately, but only works for known guildIds (servers)
-            Routes.applicationGuildCommands(clientId, botTestingServer),
-            { body: commands },
-        );
-
-        console.log("Successfully registered application commands.");
-    }
-    catch (error)
-    {
-        console.error(error);
-    }
+// applicationCommands updates commands on all servers, but will take up to one hour
+/*
+(async () => {
+  try {
+    await rest.put(
+      Routes.applicationCommands(clientId),
+      { body: commands },
+    );
+  }
+  catch (error) {
+    console.error(error);
+  }
 })();
+*/

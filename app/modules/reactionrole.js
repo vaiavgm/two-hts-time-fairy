@@ -1,7 +1,9 @@
-/* eslint-disable no-unused-vars */
+const { SlashCommandBuilder } = require("@discordjs/builders");
+
 module.exports = {
-    name: "reactionrole",
-    description: "reactions for users",
+
+    data: new SlashCommandBuilder().setName("reactionrole").setDescription("reactions for users"),
+
     async execute(message, args, Discord, client)
     {
         if (!message.member.roles.cache.some(r => r.name === "@moderator")) return;

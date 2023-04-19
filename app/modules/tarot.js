@@ -106,9 +106,6 @@ function tarot(user)
 const { SlashCommandBuilder } = require("@discordjs/builders");
 
 module.exports = {
-    name: "tarot",
-    description: "bla",
-
     data: new SlashCommandBuilder().setName("tarot").setDescription("shows your past, present, or future"),
 
     async execute(interaction, user)

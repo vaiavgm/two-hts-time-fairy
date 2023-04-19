@@ -1,6 +1,14 @@
 {
-    "clientId": "888106813789200405",
-    "soloTestingServer": "559525128615231510",
-    "botTestingServer": "726362651218673714",
-    "twohtsServer": "258226136582979584"
+  "clientId": "888106813789200405",
+  "servers": [
+    {
+      "soloTestingServer": "559525128615231510"
+    },
+    {
+      "botTestingServer": "726362651218673714"
+    },
+    {
+      "twohtsServer": "258226136582979584"
+    }
+  ]
 }
