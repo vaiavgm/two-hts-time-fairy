@@ -32,6 +32,7 @@
     <Content Include=".eslintrc.json" />
     <Content Include="app\bot.js" />
     <Content Include="app\modules\admin.js" />
+    <Content Include="app\modules\dice.js" />
     <Content Include="app\modules\react.js" />
     <Content Include="app\modules\gendom3.js" />
     <Content Include="app\modules\ping.js" />
