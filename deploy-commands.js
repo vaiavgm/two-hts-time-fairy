@@ -4,18 +4,20 @@
 require("dotenv").config();
 const fs = require("fs");
 
-let clientId, servers;
+let clientId, servers, token;
 const local_testing = process.env.TESTING;
 
 if (local_testing !== undefined)
 {
     console.log("TESTING is set, updating FakeFairy");
     ({ clientId, servers } = require("./config-local.json"));
+    token = process.env.LOCAL_TOKEN;
 }
 else
 {
-    console.log("Production mode, updating TimeFairy");
+    console.log("Production mode, updating TimeFairy (set 'TESTING=true' in .env for FakeFairy)");
     ({ clientId, servers } = require("./config.json"));
+    token = process.env.DISCORD_TOKEN;
 }
 
 const { REST } = require("@discordjs/rest");
@@ -41,7 +43,7 @@ class slash_command_target_server
 {
     constructor(serverId)
     {
-        this.request = new REST({ version: "10" }).setToken(process.env.LOCAL_TOKEN);
+        this.request = new REST({ version: "10" }).setToken(token);
         this.serverId = serverId;
     }
 }
@@ -59,7 +61,7 @@ for (const server of servers)
 
     const server_id = values[0];
 
-    console.log(server_id);
+    // console.log(server_id);
     rest_requests.push(new slash_command_target_server(server_id));
 }
 

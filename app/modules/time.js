@@ -45,23 +45,23 @@ function secToStr(seconds)
 
 function handle2HTSTime()
 {
-    const localDate = new Date();
+    // get the current date and time in the specified timezone
+    const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
     const _2htsCompoId = getCompoId();
-    const compoStart = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 21, 0, 0);
-    const compoEnd = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 23, 15, 0);
-    const compoMidnight = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0);
+    const compoStart = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 21, 0, 0);
+    const compoEnd = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 23, 15, 0);
+    const compoMidnight = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate() + 1, 0, 0, 0);
 
     let message;
 
-    if (localDate.getDay() === 0 && localDate >= compoStart && localDate < compoMidnight)
+    if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoMidnight)
     {
-        const secondsUntilCompoEnd = Math.floor((compoEnd - localDate) / 1000);
+        const secondsUntilCompoEnd = Math.floor((compoEnd - new Date(localDate)) / 1000);
         message = `**2HTS${_2htsCompoId}** in progress. Ends in ${secToStr(secondsUntilCompoEnd)}.\n\n${handleLinks()}`;
-    }
-    else
+    } else
     {
-        const daysUntilNext2HTS = (7 - localDate.getDay() + 7) % 7;
-        const secondsUntil2HTS = (daysUntilNext2HTS * 24 * 60 * 60) + ((21 * 60 * 60) - (localDate.getHours() * 60 * 60) - (localDate.getMinutes() * 60) - localDate.getSeconds());
+        const daysUntilNext2HTS = (7 - new Date(localDate).getDay() + 7) % 7;
+        const secondsUntil2HTS = (daysUntilNext2HTS * 24 * 60 * 60) + ((21 * 60 * 60) - (new Date(localDate).getHours() * 60 * 60) - (new Date(localDate).getMinutes() * 60) - new Date(localDate).getSeconds());
         message = `Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}`;
     }
 

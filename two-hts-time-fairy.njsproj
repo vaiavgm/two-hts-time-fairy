@@ -41,6 +41,7 @@
     <Content Include="config-local.json" />
     <Content Include="config.json" />
     <Content Include="deploy-commands.js" />
+    <Content Include="deploy-fairy-commands.js" />
     <Content Include="license.txt" />
     <Content Include="package.json" />
     <Content Include="README.md" />
