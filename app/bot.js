@@ -22,7 +22,7 @@ if (local_testing !== undefined)
 else
 {
     temp_token = process.env.DISCORD_TOKEN;
-    console.log("[INFO] Activating online mode. set 'TESTING=yes' to switch to local testing.");
+    console.log("[INFO] Activating time fairy. Set 'TESTING=yes' to switch to local testing.");
 }
 
 const token = temp_token;
