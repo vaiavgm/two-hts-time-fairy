@@ -53,7 +53,7 @@ for (const file of commandFiles)
 client.once("ready", () =>
 {
     client.user.setActivity("/time", { type: "WATCHING" });
-    console.log("[INFO] Bot is ready!");
+    console.log("[INFO] Bot is ready! Hello :)");
 });
 
 // Execute on interaction
