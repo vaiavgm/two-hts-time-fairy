@@ -17,12 +17,12 @@ let temp_token = "";
 if (local_testing !== undefined)
 {
     temp_token = process.env.LOCAL_TOKEN;
-    console.log("[INFO] Launching fake bot.");
+    console.log("[INFO] Launching fake bot. Remove 'TESTING=yes', to use production build.");
 }
 else
 {
     temp_token = process.env.DISCORD_TOKEN;
-    console.log("[INFO] Launching 2HTS Time Fairy. Set 'TESTING=yes' to switch to local testing.");
+    console.log("[INFO] Launching 2HTS Time Fairy...");
 }
 
 const token = temp_token;
