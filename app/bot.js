@@ -49,7 +49,6 @@ for (const file of commandFiles)
     }
 }
 
-
 // Execute once after startup
 client.once("ready", () =>
 {

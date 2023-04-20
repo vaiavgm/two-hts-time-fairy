@@ -41,7 +41,7 @@ function getCommandsFromFile(file)
 }
 
 
-async function executeDiscordApiRequest(request_method, guild, commands)
+async function executeDiscordApiRequest(request_method, guild, commands, commandId)
 {
     // Create a new REST client for sending requests to the Discord API
     const rest = new REST({ version: "10" }).setToken(token);
@@ -69,13 +69,8 @@ async function executeDiscordApiRequest(request_method, guild, commands)
             }
             break;
         case request_methods.DELETE:
-            for (let i = 0; i < commands.length; i++)
-            {
-                response = await rest.delete(
-                    Routes.applicationGuildCommands(clientId, guild.id),
-                    { body: commands[i] },
-                );
-            }
+            response = await rest.delete(
+                Routes.applicationGuildCommand(clientId, guild.id, commandId));
         }
 
         return response.data;
@@ -89,9 +84,7 @@ async function executeDiscordApiRequest(request_method, guild, commands)
 async function addCommandsToGuild(interaction, filename)
 {
     const commands = getCommandsFromFile(filename);
-
     const guild = interaction.guild;
-    // let commandNames;
 
     // Send a request to the Discord API to register the new slash commands in the guild
     await executeDiscordApiRequest(
@@ -105,22 +98,35 @@ async function addCommandsToGuild(interaction, filename)
 
 async function removeCommandsFromGuild(interaction, filename)
 {
+    const guild = interaction.guild;
+    const commands = getCommandsFromFile(filename);
+    let commandId = -1;
+
     const rest = new REST({ version: "10" }).setToken(token);
-    const cmds = await rest.get(Routes.applicationGuildCommands(clientId, guild.id));
-    cmds.forEach(command =>
+    const allCmds = await rest.get(Routes.applicationGuildCommands(clientId, interaction.guild.id));
+    allCmds.forEach(cmd =>
     {
-        console.log(`Command ${command.name} has ID ${command.id}`);
+        if (commands.name == cmd.name)
+        {
+            commandId = cmd.id;
+            // console.log(`Command ${cmd.name} has ID ${cmd.id}`);
+        }
     });
 
+    if (commandId < 0)
+    {
+        // console.log(`No ID found for slash command ${commands.name}!`);
+        return `No ID found for slash command ${commands.name}!`;
+    }
 
-    const commands = getCommandsFromFile(filename);
-    const guild = interaction.guild;
+
 
     // Send a request to the Discord API to delete the slash commands from the guild
     await executeDiscordApiRequest(
         request_methods.DELETE,
         guild,
-        [commands],
+        null,
+        commandId,
     );
 
     return `Attempting to remove slash commands from guild **${guild.name}** for module: **${filename}**`;
@@ -129,9 +135,8 @@ async function removeCommandsFromGuild(interaction, filename)
 async function removeAllCommandsFromGuild(interaction)
 {
     const guild = interaction.guild;
-
-    // const commands = await client.application?.commands.fetch();
     const guildCommands = await guild.commands.fetch();
+
     console.log("Registered Guild Commands:");
     for (const cmd in guildCommands)
     {
@@ -144,7 +149,7 @@ async function removeAllCommandsFromGuild(interaction)
         guild,
         [],
     );
-    return `Removed all slash commands from guild **${guild.name}**`;
+    return `[ADMIN] Removed all slash commands from guild **${guild.name}**`;
 }
 
 module.exports = {

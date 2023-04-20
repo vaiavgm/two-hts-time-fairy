@@ -26,8 +26,8 @@ const { Routes } = require("discord-api-types/v9");
 const commands = [];
 
 // do not load the skipped slash commands, but load all other modules
-const skippedFiles = ["ping.js", "react.js", "reactionrole.js", "tarot.js", "gendom3.js"];
-const moduleFiles = fs.readdirSync("./app/modules/").filter(file => file.endsWith(".js") && !skippedFiles.some(skippedFile => file.startsWith(skippedFile)));
+const usedFiles = ["admin.js", "time.js"];
+const moduleFiles = fs.readdirSync("./app/modules/").filter(file => file.endsWith(".js") && usedFiles.some(usedFile => file.startsWith(usedFile)));
 
 // Grab the SlashCommandBuilder::toJSON() output of each command's data for deployment
 for (const file of moduleFiles)
