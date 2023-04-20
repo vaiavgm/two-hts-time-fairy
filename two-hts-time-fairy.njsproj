@@ -39,10 +39,10 @@
     <Content Include="app\modules\reactionrole.js" />
     <Content Include="app\modules\tarot.js" />
     <Content Include="app\modules\time.js" />
+    <Content Include="app\system\slash-commands.js" />
     <Content Include="config-local.json" />
     <Content Include="config.json" />
     <Content Include="deploy-commands.js" />
-    <Content Include="deploy-fairy-commands.js" />
     <Content Include="license.txt" />
     <Content Include="package.json" />
     <Content Include="README.md" />
@@ -50,6 +50,7 @@
   <ItemGroup>
     <Folder Include="app\" />
     <Folder Include="app\modules\" />
+    <Folder Include="app\system\" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />
 </Project>

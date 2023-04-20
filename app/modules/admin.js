@@ -7,6 +7,7 @@ function isAdmin(user)
 }
 
 const { SlashCommandBuilder } = require("@discordjs/builders");
+const slash_functions = require("../system/slash-commands");
 
 module.exports = {
 
@@ -18,7 +19,7 @@ module.exports = {
         .addStringOption(option =>
             option.setName("command")
                 .setDescription("Which command do you want to execute? (e.g. \"start\")")
-                .setRequired(true).addChoices({ name: "start", value: "start" }, { name: "reset", value: "reset" })),
+                .setRequired(true).addChoices({ name: "start", value: "start" }, { name: "reset", value: "reset" }, { name: "Activate Slash Command", value: "activate" }, { name: "Deactivate Slash Command", value: "deactivate" })),
 
 
     async execute(interaction, user, commands)
@@ -40,6 +41,12 @@ module.exports = {
             break;
         case "start":
             result = await commands.get(app).start();
+            break;
+        case "activate":
+            result = await slash_functions.addCommandsToGuild(interaction, app);
+            break;
+        case "deactivate":
+            result = await slash_functions.removeCommandsFromGuild(interaction, app);
             break;
         }
 

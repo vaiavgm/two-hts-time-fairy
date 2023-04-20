@@ -11,7 +11,7 @@ if (local_testing !== undefined)
 {
     console.log("TESTING is set, updating FakeFairy");
     ({ clientId, servers } = require("./config-local.json"));
-    token = process.env.LOCAL_TOKEN;
+    token = process.env.FAKE_TOKEN;
 }
 else
 {
@@ -67,17 +67,23 @@ for (const server of servers)
 
 for (const rest of rest_requests)
 {
+
     (async () =>
     {
         try
         {
-            await rest.request.put(
+            const response = await rest.request.put(
                 // applicationGuildCommands updates commands immediately, but only works for known guildIds (servers)
                 Routes.applicationGuildCommands(clientId, rest.serverId),
                 { body: commands },
             );
 
+            response.forEach((command) =>
+            {
+                console.log(`Command ${command.name} created with ID: ${command.id}`);
+            });
             console.log("Successfully registered application commands for server " + rest.serverId + ".");
+
         }
         catch (error)
         {

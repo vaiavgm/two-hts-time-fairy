@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 const { SlashCommandBuilder } = require("@discordjs/builders");
 
 module.exports = {
@@ -12,9 +11,8 @@ module.exports = {
                 .setDescription("only the highest/lowest roll counts").setRequired(false)
                 .addChoices({ name: "advantage", value: "advantage" }, { name: "disadvantage", value: "disadvantage" })),
 
-    async execute(interaction, user)
+    async execute(interaction)
     {
-
         const dicetype = interaction.options.getString("dicetype");
         const advantage = interaction.options.getString("advantage");
 
@@ -28,10 +26,6 @@ const Discord = require("discord.js");
 
 function rollDice(diceNotation, advantage = null)
 {
-    const error_embed = new Discord.MessageEmbed()
-        .setColor("#ff0000")
-        .setTitle("Invalid dice notation.");
-
     // Parse the notation string into the number of dice and the number of sides per die
     let [numDice, numSides] = diceNotation.split("d");
 

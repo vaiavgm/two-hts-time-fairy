@@ -16,7 +16,7 @@ let temp_token = "";
 
 if (local_testing !== undefined)
 {
-    temp_token = process.env.LOCAL_TOKEN;
+    temp_token = process.env.FAKE_TOKEN;
     console.log("[INFO] Launching fake bot. Remove 'TESTING=yes', to use production build.");
 }
 else
@@ -49,6 +49,7 @@ for (const file of commandFiles)
     }
 }
 
+
 // Execute once after startup
 client.once("ready", () =>
 {
@@ -63,7 +64,6 @@ client.on("interactionCreate", async interaction =>
 
     const user = client.users.cache.get(interaction.member.user.id);
 
-    // const { commandName } = interaction;
     const command = interaction.client.commands.get(interaction.commandName);
 
     if (!command)
