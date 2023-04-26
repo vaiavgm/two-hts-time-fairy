@@ -8,3 +8,5 @@ https://discord.com/api/oauth2/authorize?client_id=881164920673165333&permission
 
 Fake bot invitation link:
 https://discord.com/api/oauth2/authorize?client_id=881286017041170456&permissions=8&scope=bot%20applications.commands
+
+(TODO: find out the permissions it actually needs, and adapt the link)
