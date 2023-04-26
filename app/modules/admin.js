@@ -16,7 +16,12 @@ module.exports = {
         .addStringOption(option =>
             option.setName("application")
                 .setDescription("Which application do you want to control? (e.g. \"gendom3\")")
-                .setRequired(true).addChoices({ name: "gendom3", value: "gendom3" }, { name: "time", value: "time" }, { name: "tarot", value: "tarot" }, { name: "dice", value: "dice" }))
+                .setRequired(true).addChoices(
+                    { name: "gendom3", value: "gendom3" },
+                    { name: "time", value: "time" },
+                    { name: "tarot", value: "tarot" },
+                    { name: "dice", value: "dice" },
+                    { name: "randomgif", value: "randomgif" }))
         .addStringOption(option =>
             option.setName("command")
                 .setDescription("Which command do you want to execute? (e.g. \"start\")")

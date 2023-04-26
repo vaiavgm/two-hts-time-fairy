@@ -19,7 +19,9 @@
     "dotenv": "^16.0.3",
     "eslint": "^7.32.0",
     "@typescript-eslint/parser": "^5.59.0",
-    "fs": "^0.0.2"
+    "fs": "^0.0.2",
+    "gif-encoder-2": "1.0.5",
+    "canvas": "^2.11.2"
   },
   "engines": {
     "node": "^18.15.0",
