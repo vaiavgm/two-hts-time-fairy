@@ -55,15 +55,20 @@ function handle2HTSTime()
 
     // get the current date and time in the specified timezone
     const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
+    // localDate = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate() + 3, 23, 17, 0);
     const _2htsCompoId = getCompoId();
     const compoStart = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 21, 0, 0);
-    const compoEnd = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 23, 15, 0);
+    const compoEnd = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 23, 16, 0);
     const compoMidnight = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate() + 1, 0, 0, 0);
 
-    if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoMidnight)
+    if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoEnd)
     {
         const secondsUntilCompoEnd = Math.floor((compoEnd - new Date(localDate)) / 1000);
-        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Ends in ${secToStr(secondsUntilCompoEnd)}.\n\n${handleLinks()}`);
+        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Time left to compose: ${secToStr(secondsUntilCompoEnd)}\n\n${handleLinks()}`);
+    }
+    else if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoMidnight)
+    {
+        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Tune in to our listening party, and we hope to see you again next sunday!\n\n${handleLinks()}`);
     }
     else
     {
