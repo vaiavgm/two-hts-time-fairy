@@ -13,16 +13,17 @@ require("dotenv").config();
 const local_testing = process.env.TESTING;
 
 let temp_token = "";
+const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
 
 if (local_testing !== undefined)
 {
     temp_token = process.env.FAKE_TOKEN;
-    console.log("[INFO] Launching fake bot. Remove 'TESTING=yes', to use production build.");
+    console.log(`${localDate} [INFO] Launching fake bot. Remove 'TESTING=yes', to use production build.`);
 }
 else
 {
     temp_token = process.env.DISCORD_TOKEN;
-    console.log("[INFO] Launching 2HTS Time Fairy...");
+    console.log(`${localDate} [INFO] Launching 2HTS Time Fairy...`);
 }
 
 const token = temp_token;
