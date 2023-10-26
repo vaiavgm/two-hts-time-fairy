@@ -1,5 +1,4 @@
 const partylink = "<http://chorus.thasauce.net:8000/compo.m3u>";
-
 function getCompoId()
 {
     // 2HTS250 was on that day
@@ -46,6 +45,40 @@ function secToStr(seconds)
 
 const Discord = require("discord.js");
 
+
+// function isoToObj(s)
+// {
+//     const b = s.split(/[-TZ:]/i);
+//
+//     return new Date(Date.UTC(b[0], --b[1], b[2], b[3], b[4], b[5]));
+//
+// }
+// function timeToGo(s)
+// {
+//
+//     // Utility to add leading zero
+//     function z(n)
+//     {
+//         return (n < 10 ? "0" : "") + n;
+//     }
+//
+//     // Convert string to date object
+//     const d = isoToObj(s);
+//     let diff = d - new Date();
+//
+//     // Allow for previous times
+//     const sign = diff < 0 ? "-" : "";
+//     diff = Math.abs(diff);
+//
+//     // Get time components
+//     const hours = diff / 3.6e6 | 0;
+//     const mins = diff % 3.6e6 / 6e4 | 0;
+//     const secs = Math.round(diff % 6e4 / 1e3);
+//
+//     // Return formatted string
+//     return sign + z(hours) + ":" + z(mins) + ":" + z(secs);
+// }
+
 function handle2HTSTime()
 {
     // create a new Discord embed
@@ -55,6 +88,7 @@ function handle2HTSTime()
 
     // get the current date and time in the specified timezone
     const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
+
     // localDate = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate() + 3, 23, 17, 0);
     const _2htsCompoId = getCompoId();
     const compoStart = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 21, 0, 0);
@@ -63,17 +97,37 @@ function handle2HTSTime()
 
     if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoEnd)
     {
+        // 2HTS in progress
         const secondsUntilCompoEnd = Math.floor((compoEnd - new Date(localDate)) / 1000);
         embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Time left to compose: ${secToStr(secondsUntilCompoEnd)}\n\n${handleLinks()}`);
     }
     else if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoMidnight)
     {
+        // 2HTS party started
         embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Tune in to our listening party, and we hope to see you again next sunday!\n\n${handleLinks()}`);
     }
     else
     {
+        // Time until next 2HTS start
         const daysUntilNext2HTS = (7 - new Date(localDate).getDay() + 7) % 7;
-        const secondsUntil2HTS = (daysUntilNext2HTS * 24 * 60 * 60) + ((21 * 60 * 60) - (new Date(localDate).getHours() * 60 * 60) - (new Date(localDate).getMinutes() * 60) - new Date(localDate).getSeconds());
+        const localTZOffset = new Date(localDate).getTimezoneOffset();
+
+        let futureDate = new Date(localDate);
+        futureDate = futureDate.setDate(futureDate.getDate() + daysUntilNext2HTS);
+        const futureTZOffset = new Date(futureDate).getTimezoneOffset();
+
+        const TZDeltaMinutes = localTZOffset - futureTZOffset;
+
+
+        const secondsUntil2HTS =
+            // convert days into seconds
+            (daysUntilNext2HTS * 24 * 60 * 60) +
+            // convert hours until 21:00 into seconds
+            ((21 * 60 * 60) - (new Date(localDate).getHours() * 60 * 60)
+            // convert minutes to seconds, and apply seconds difference
+            - ((new Date(localDate).getMinutes()) * 60) - new Date(localDate).getSeconds())
+            // convert DST stuff to seconds and subtract them
+            - (TZDeltaMinutes * 60);
         embed.setDescription(`Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}`);
     }
 
