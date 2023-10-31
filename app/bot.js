@@ -5,9 +5,10 @@ const path = require("path");
 const fs = require("fs");
 
 const { Client, Intents } = require("discord.js");
-const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, "GUILD_MESSAGES"] });
 
 require("dotenv").config();
+
 
 // Determine, which token to use
 const local_testing = process.env.TESTING;
@@ -74,5 +75,37 @@ client.on("interactionCreate", async interaction =>
 
     await command.execute(interaction, user, client.commands);
 });
+
+
+// -- OpenAI API start (TODO - extract to separate file/module, if possible)
+const { OpenAI } = require("openai");
+// eslint-disable-next-line no-unused-vars
+const openai = new OpenAI({
+    api_key: process.env.OPENAI_API_KEY,
+});
+// -- OpenAI API end
+client.on("messageCreate", function(message)
+{
+    console.log(`message created: ${message.content}`);
+    if (message.author.bot) return;
+
+    if (!message.content.toLowerCase().includes("now playing: ")) return;
+
+    const parsedMessage = message.content;
+    parsedMessage.replace(/Now Playing: /gi, "");
+
+    (async () =>
+    {
+        const completion = await openai.completions.create({
+            model: "text-davinci-003",
+            prompt: `Write something kind and motivational about the music piece named "${parsedMessage}".`,
+            max_tokens: 100,
+        });
+        // message.deferReply();
+        // message.deleteReply();
+        message.channel.send(completion.choices[0].text);
+    })();
+});
+
 
 client.login(token);

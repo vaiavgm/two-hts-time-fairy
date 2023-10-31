@@ -45,40 +45,6 @@ function secToStr(seconds)
 
 const Discord = require("discord.js");
 
-
-// function isoToObj(s)
-// {
-//     const b = s.split(/[-TZ:]/i);
-//
-//     return new Date(Date.UTC(b[0], --b[1], b[2], b[3], b[4], b[5]));
-//
-// }
-// function timeToGo(s)
-// {
-//
-//     // Utility to add leading zero
-//     function z(n)
-//     {
-//         return (n < 10 ? "0" : "") + n;
-//     }
-//
-//     // Convert string to date object
-//     const d = isoToObj(s);
-//     let diff = d - new Date();
-//
-//     // Allow for previous times
-//     const sign = diff < 0 ? "-" : "";
-//     diff = Math.abs(diff);
-//
-//     // Get time components
-//     const hours = diff / 3.6e6 | 0;
-//     const mins = diff % 3.6e6 / 6e4 | 0;
-//     const secs = Math.round(diff % 6e4 / 1e3);
-//
-//     // Return formatted string
-//     return sign + z(hours) + ":" + z(mins) + ":" + z(secs);
-// }
-
 function handle2HTSTime()
 {
     // create a new Discord embed
@@ -87,21 +53,26 @@ function handle2HTSTime()
         .setTitle("2HTS Compo Info");
 
     // get the current date and time in the specified timezone
-    const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
+    const localDateStr = new Date();
+    const localDate = new Date(localDateStr);
 
-    // localDate = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate() + 3, 23, 17, 0);
+
+    // localDate = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 3, 23, 17, 0);
     const _2htsCompoId = getCompoId();
-    const compoStart = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 21, 0, 0);
-    const compoEnd = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate(), 23, 16, 0);
-    const compoMidnight = new Date(new Date(localDate).getFullYear(), new Date(localDate).getMonth(), new Date(localDate).getDate() + 1, 0, 0, 0);
+    const compoStart = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 20, 0, 0);
+    compoStart.setUTCHours(20);
+    const compoEnd = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 22, 16, 0);
+    compoEnd.setUTCHours(22);
+    const compoMidnight = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0);
+    compoMidnight.setUTCHours(23);
 
-    if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoEnd)
+    if (localDate.getDay() === 0 && localDate >= compoStart && localDate < compoEnd)
     {
         // 2HTS in progress
-        const secondsUntilCompoEnd = Math.floor((compoEnd - new Date(localDate)) / 1000);
+        const secondsUntilCompoEnd = Math.floor((compoEnd - localDate) / 1000);
         embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Time left to compose: ${secToStr(secondsUntilCompoEnd)}\n\n${handleLinks()}`);
     }
-    else if (new Date(localDate).getDay() === 0 && new Date(localDate) >= compoStart && new Date(localDate) < compoMidnight)
+    else if (localDate.getDay() === 0 && localDate >= compoStart && localDate < compoMidnight)
     {
         // 2HTS party started
         embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Tune in to our listening party, and we hope to see you again next sunday!\n\n${handleLinks()}`);
@@ -109,26 +80,24 @@ function handle2HTSTime()
     else
     {
         // Time until next 2HTS start
-        const daysUntilNext2HTS = (7 - new Date(localDate).getDay() + 7) % 7;
-        const localTZOffset = new Date(localDate).getTimezoneOffset();
+        const daysUntilNext2HTS = (7 - localDate.getDay() + 7) % 7;
 
-        let futureDate = new Date(localDate);
-        futureDate = futureDate.setDate(futureDate.getDate() + daysUntilNext2HTS);
-        const futureTZOffset = new Date(futureDate).getTimezoneOffset();
+        const localTZOffset = localDate.getTimezoneOffset();
+        const futureTZOffset = compoStart.getTimezoneOffset();
 
         const TZDeltaMinutes = localTZOffset - futureTZOffset;
-
 
         const secondsUntil2HTS =
             // convert days into seconds
             (daysUntilNext2HTS * 24 * 60 * 60) +
-            // convert hours until 21:00 into seconds
-            ((21 * 60 * 60) - (new Date(localDate).getHours() * 60 * 60)
+            // convert hours until 20:00 GMT into seconds
+            ((new Date(compoStart).getUTCHours() * 60 * 60) - (localDate.getUTCHours() * 60 * 60)
             // convert minutes to seconds, and apply seconds difference
-            - ((new Date(localDate).getMinutes()) * 60) - new Date(localDate).getSeconds())
+            - ((localDate.getMinutes()) * 60) - localDate.getSeconds())
             // convert DST stuff to seconds and subtract them
             - (TZDeltaMinutes * 60);
         embed.setDescription(`Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}`);
+        // embed.setDescription(`Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}\nCurrentUTCHour: ${localDate.getUTCHours()} | CompoUTCHour: ${compoStart.getUTCHours()}`);
     }
 
     // return the Discord embed

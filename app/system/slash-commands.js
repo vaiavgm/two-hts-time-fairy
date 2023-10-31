@@ -1,3 +1,5 @@
+// to add additional slash commands, use admin.js and add e.g. { name: "dice", value: "dice" }
+
 let token, clientId;
 if (process.env.TESTING !== undefined)
 {

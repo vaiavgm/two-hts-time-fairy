@@ -1,7 +1,10 @@
 function isAdmin(user)
 {
-    const userId = user.username + "#" + user.discriminator;
-    const admins = ["Vaia#6573", "antik#0959"];
+    const userId = user.username;
+    const admins = ["vaia", "antik0959"];
+
+    // console.log(user.username);
+    // console.log(user.discriminator);
 
     return admins.includes(userId);
 }
@@ -21,6 +24,7 @@ module.exports = {
                     { name: "time", value: "time" },
                     { name: "tarot", value: "tarot" },
                     { name: "dice", value: "dice" },
+                    { name: "chatgpt", value: "chatgpt" },
                     { name: "randomgif", value: "randomgif" }))
         .addStringOption(option =>
             option.setName("command")
@@ -60,7 +64,7 @@ module.exports = {
         case "activate":
             // break, if "confirm" has not been written
             if (!confirm) break;
-            result = await slash_functions.addCommandsToGuild(interaction, app);
+            result = await slash_functions.addCommandsToGuild(interaction, "chatgpt");
             break;
         case "deactivate":
             // break, if "confirm" has not been written
