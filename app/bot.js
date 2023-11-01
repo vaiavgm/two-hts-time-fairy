@@ -92,32 +92,41 @@ const openai = new OpenAI({
 
 client.on("messageCreate", function(message)
 {
-    if (message.author.bot) return;
 
-    if (!message.content.toLowerCase().includes("now playing: ")) return;
-    if (!message.content.includes("[")) return;
-    if (!message.content.includes("]")) return;
+    const userId = message.author.username;
+    const api_callers = ["vaia", "antik0959", "urinalpooper"];
+
+    if (message.author.bot || !api_callers.includes(userId)) return;
 
     let parsedMessage = message.content;
-    parsedMessage = parsedMessage.replace(/Now Playing: /gi, "");
     parsedMessage = parsedMessage.replace(/\*/g, "");
 
-    const trackDuration = parsedMessage.split("[")[1].split("]")[0];
-    const trackMins = parseInt(trackDuration.split(":")[0]);
-    const trackSecs = parseInt(trackDuration.split(":")[1]);
+    if (!parsedMessage.toLowerCase().startsWith("now playing: ")) return;
+    if (!parsedMessage.includes("[")) return;
+    if (!parsedMessage.includes("]")) return;
+
+    parsedMessage = parsedMessage.replace(/Now Playing: /gi, "");
+
+    const trackDurationString = parsedMessage.split("[")[1].split("]")[0];
+    const trackMins = parseInt(trackDurationString.split(":")[0]);
+    const trackSecs = parseInt(trackDurationString.split(":")[1]);
 
     const trackDurationInSecs = trackMins * 60 + trackSecs;
+
+    if (isNaN(trackMins) || isNaN(trackSecs) || isNaN(trackDurationInSecs) || trackDurationInSecs <= 0) return;
 
     const trackAndAuthor = parsedMessage.split("[")[0].split(/ by /g);
     const authorName = trackAndAuthor.pop().trim();
     const trackName = trackAndAuthor.join(" by ").trim();
 
+    if (authorName.length == 0 || trackName.length == 0) return;
+
     const complimentPrompts = [
-        `Write a kind and motivational sentence about the music piece named "${trackName}" by ${authorName}. Use 30 tokens.`,
-        `Tell ${authorName} that you are enjoying their song so far in a single sentence! Use 30 tokens.`,
-        `Compliment ${authorName} on the arrangement of their song "${trackName}" in a single sentence. Use 30 tokens.`,
-        `Thank ${authorName} for their music submission and express nice thoughts about it in a single sentence. Use 30 tokens.`,
-        `Express surprise over how a musical section of the song "${trackName}" developed in a single sentence. Use 30 tokens.`,
+        `Write a kind and motivational sentence about the music piece named "${trackName}" by ${authorName}.`,
+        `Tell ${authorName} that you are enjoying their song "${trackName}" so far in a single sentence!`,
+        `Compliment ${authorName} on the arrangement of their song "${trackName}" in a single sentence.`,
+        `Thank ${authorName} for their submission of the track "${trackName}" and express nice thoughts about it in a single sentence.`,
+        `Express surprise over how a musical section of the song "${trackName}" by ${authorName} developed in a single sentence.`,
     ];
 
     // time exceeded

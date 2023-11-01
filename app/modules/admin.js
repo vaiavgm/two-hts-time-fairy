@@ -24,7 +24,6 @@ module.exports = {
                     { name: "time", value: "time" },
                     { name: "tarot", value: "tarot" },
                     { name: "dice", value: "dice" },
-                    { name: "chatgpt", value: "chatgpt" },
                     { name: "randomgif", value: "randomgif" }))
         .addStringOption(option =>
             option.setName("command")
