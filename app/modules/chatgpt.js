@@ -21,7 +21,7 @@ module.exports = {
 
         const completion = await openai.completions.create({
             model: "text-davinci-003",
-            prompt: `Write something nice about music`,
+            prompt: `Write something nice about ${userprompt}`,
             max_tokens: 30,
         });
 

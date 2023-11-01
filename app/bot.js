@@ -77,35 +77,82 @@ client.on("interactionCreate", async interaction =>
 });
 
 
+/* at some point i want to figure out the way it reacts to numbers so that anying greater than [3:00]
+in the time gets it to say something about it being too long */
+
 // -- OpenAI API start (TODO - extract to separate file/module, if possible)
 const { OpenAI } = require("openai");
+const { randomInt } = require("crypto");
 // eslint-disable-next-line no-unused-vars
 const openai = new OpenAI({
     api_key: process.env.OPENAI_API_KEY,
 });
 // -- OpenAI API end
+
+
 client.on("messageCreate", function(message)
 {
-    console.log(`message created: ${message.content}`);
     if (message.author.bot) return;
 
     if (!message.content.toLowerCase().includes("now playing: ")) return;
+    if (!message.content.includes("[")) return;
+    if (!message.content.includes("]")) return;
 
-    const parsedMessage = message.content;
-    parsedMessage.replace(/Now Playing: /gi, "");
+    let parsedMessage = message.content;
+    parsedMessage = parsedMessage.replace(/Now Playing: /gi, "");
+    parsedMessage = parsedMessage.replace(/\*/g, "");
 
-    (async () =>
+    const trackDuration = parsedMessage.split("[")[1].split("]")[0];
+    const trackMins = parseInt(trackDuration.split(":")[0]);
+    const trackSecs = parseInt(trackDuration.split(":")[1]);
+
+    const trackDurationInSecs = trackMins * 60 + trackSecs;
+
+    const trackAndAuthor = parsedMessage.split("[")[0].split(/ by /g);
+    const authorName = trackAndAuthor.pop().trim();
+    const trackName = trackAndAuthor.join(" by ").trim();
+
+    const complimentPrompts = [
+        `Write a kind and motivational sentence about the music piece named "${trackName}" by ${authorName}. Use 30 tokens.`,
+        `Tell ${authorName} that you are enjoying their song so far in a single sentence! Use 30 tokens.`,
+        `Compliment ${authorName} on the arrangement of their song "${trackName}" in a single sentence. Use 30 tokens.`,
+        `Thank ${authorName} for their music submission and express nice thoughts about it in a single sentence. Use 30 tokens.`,
+        `Express surprise over how a musical section of the song "${trackName}" developed in a single sentence. Use 30 tokens.`,
+    ];
+
+    // time exceeded
+    const trackDurationSecsLimit = 180;
+    if (trackDurationInSecs > trackDurationSecsLimit)
     {
-        const completion = await openai.completions.create({
-            model: "text-davinci-003",
-            prompt: `Write something kind and motivational about the music piece named "${parsedMessage}".`,
-            max_tokens: 100,
-        });
-        // message.deferReply();
-        // message.deleteReply();
-        message.channel.send(completion.choices[0].text);
-    })();
-});
+        const secsExceeded = trackDurationInSecs - trackDurationSecsLimit;
 
+        setTimeout(() =>
+        {
+            message.channel.send(`Hi **${authorName}**, please kindly respect the 3 minutes guideline. As it is customary, ${secsExceeded} seconds were deducted from your remaining lifetime.`);
+        }, 1000);
+    }
+
+    message.channel.send(`Now Playing: **${trackName}** by **${authorName}**!`);
+
+    const minComplimentTimeMillis = parseInt(trackDurationInSecs * 0.4 * 1000);
+    const maxComplimentTimeMillis = parseInt(trackDurationInSecs * 0.85 * 1000);
+    const complimentTimeMillis = randomInt(minComplimentTimeMillis, maxComplimentTimeMillis);
+    // console.log(`min: ${minComplimentTimeMillis / 1000}s | max: ${maxComplimentTimeMillis / 1000}s | rand: ${complimentTimeMillis / 1000}s`);
+    setTimeout(() =>
+    {
+        (async () =>
+        {
+            const completion = await openai.completions.create({
+                model: "text-davinci-003",
+                prompt: complimentPrompts[randomInt(complimentPrompts.length)],
+                max_tokens: 40,
+            });
+            // message.deferReply();
+            // message.deleteReply();
+            message.channel.send(completion.choices[0].text);
+        })();
+    }, complimentTimeMillis);
+
+});
 
 client.login(token);
