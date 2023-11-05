@@ -141,7 +141,7 @@ client.on("messageCreate", function(message)
         }, 1000);
     }
 
-    message.channel.send(`Now Playing: **${trackName}** by **${authorName}**!`);
+    console.log(`Now Playing: **${trackName}** by **${authorName}**!`);
 
     const minComplimentTimeMillis = parseInt(trackDurationInSecs * 0.4 * 1000);
     const maxComplimentTimeMillis = parseInt(trackDurationInSecs * 0.85 * 1000);
