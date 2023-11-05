@@ -96,7 +96,7 @@ function handle2HTSTime()
             - ((localDate.getMinutes()) * 60) - localDate.getSeconds())
             // convert DST stuff to seconds and subtract them
             - (TZDeltaMinutes * 60);
-        embed.setDescription(`Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}`);
+        embed.setDescription(`Time until **2HTS${_2htsCompoId}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}`);
         // embed.setDescription(`Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}\nCurrentUTCHour: ${localDate.getUTCHours()} | CompoUTCHour: ${compoStart.getUTCHours()}`);
     }
 
