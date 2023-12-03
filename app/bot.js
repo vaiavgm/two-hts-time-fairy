@@ -130,14 +130,14 @@ client.on("messageCreate", function(message)
     ];
 
     // time exceeded
-    const trackDurationSecsLimit = 180;
+    const trackDurationSecsLimit = 210;
     if (trackDurationInSecs > trackDurationSecsLimit)
     {
         const secsExceeded = trackDurationInSecs - trackDurationSecsLimit;
 
         setTimeout(() =>
         {
-            message.channel.send(`Hi **${authorName}**, please kindly respect the 3 minutes guideline. As it is customary, ${secsExceeded} seconds were deducted from your remaining lifetime.`);
+            message.channel.send(`Hi **${authorName}**, please kindly respect the 3 minutes 30 seconds guideline. As it is customary, ${secsExceeded} seconds were deducted from your remaining lifetime.`);
         }, 1000);
     }
 
