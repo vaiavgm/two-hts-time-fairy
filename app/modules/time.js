@@ -53,16 +53,16 @@ function handle2HTSTime()
         .setTitle("2HTS Compo Info");
 
     // get the current date and time in the specified timezone
-    const localDateStr = new Date();
+    const localDateStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
     const localDate = new Date(localDateStr);
 
 
     // localDate = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 3, 23, 17, 0);
     const _2htsCompoId = getCompoId();
-    const compoStart = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 20, 0, 0);
-    compoStart.setHours(20);
-    const compoEnd = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 22, 16, 0);
-    compoEnd.setHours(22);
+    const compoStart = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 21, 0, 0);
+    compoStart.setHours(21);
+    const compoEnd = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 23, 16, 0);
+    compoEnd.setHours(23);
     const compoMidnight = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0);
     compoMidnight.setHours(0);
 

@@ -63,7 +63,7 @@ module.exports = {
         case "activate":
             // break, if "confirm" has not been written
             if (!confirm) break;
-            result = await slash_functions.addCommandsToGuild(interaction, "chatgpt");
+            result = await slash_functions.addCommandsToGuild(interaction, app);
             break;
         case "deactivate":
             // break, if "confirm" has not been written
