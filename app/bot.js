@@ -122,11 +122,16 @@ client.on("messageCreate", function(message)
     if (authorName.length == 0 || trackName.length == 0) return;
 
     const complimentPrompts = [
-        `Write a kind and motivational sentence about the music piece named "${trackName}" by ${authorName}.`,
-        `Tell ${authorName} that you are enjoying their song "${trackName}" so far in a single sentence!`,
-        `Compliment ${authorName} on the arrangement of their song "${trackName}" in a single sentence.`,
-        `Thank ${authorName} for their submission of the track "${trackName}" and express nice thoughts about it in a single sentence.`,
-        `Express surprise over how a musical section of the song "${trackName}" by ${authorName} developed in a single sentence.`,
+        `Write a brief, kind and motivational sentence about the music piece named "${trackName}" by ${authorName}.`,
+        `Tell ${authorName} in a brief sentence that you are enjoying their song "${trackName}" so far!`,
+        `Write a brief compliment to ${authorName} on the arrangement of their song "${trackName}".`,
+        `Thank ${authorName} for their submission of the track "${trackName}" and express nice thoughts about it. Be concise.`,
+        `Express surprise over how a musical section of the song "${trackName}" by ${authorName} developed. Be concise.`,
+        `Craft a positive and encouraging message about "${trackName}" by ${authorName} that highlights its emotional impact. Be concise.`,
+        `Write a brief note expressing your enjoyment of "${trackName}" by ${authorName} and how it's resonating with you. Be concise.`,
+        `Write a brief compliment to ${authorName} on their skillful arrangement of "${trackName}" and its ability to captivate listeners.`,
+        `Show appreciation to ${authorName} for submitting "${trackName}" and share your thoughts on what makes it special. Use a single sentence.`,
+        `Express your surprise at the unexpected musical developments in "${trackName}" by ${authorName} and how they enhance the listening experience. Be concise.`,
     ];
 
     // time exceeded
@@ -152,9 +157,9 @@ client.on("messageCreate", function(message)
         (async () =>
         {
             const completion = await openai.completions.create({
-                model: "text-davinci-003",
+                model: "gpt-3.5-turbo-instruct",
                 prompt: complimentPrompts[randomInt(complimentPrompts.length)],
-                max_tokens: 40,
+                max_tokens: 100,
             });
             // message.deferReply();
             // message.deleteReply();

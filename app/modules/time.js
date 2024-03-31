@@ -60,11 +60,11 @@ function handle2HTSTime()
     // localDate = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 3, 23, 17, 0);
     const _2htsCompoId = getCompoId();
     const compoStart = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 20, 0, 0);
-    compoStart.setUTCHours(20);
+    compoStart.setHours(20);
     const compoEnd = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 22, 16, 0);
-    compoEnd.setUTCHours(22);
+    compoEnd.setHours(22);
     const compoMidnight = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0);
-    compoMidnight.setUTCHours(23);
+    compoMidnight.setHours(0);
 
     if (localDate.getDay() === 0 && localDate >= compoStart && localDate < compoEnd)
     {
