@@ -81,12 +81,14 @@ client.on("interactionCreate", async interaction =>
 in the time gets it to say something about it being too long */
 
 // -- OpenAI API start (TODO - extract to separate file/module, if possible)
+/*
 const { OpenAI } = require("openai");
 const { randomInt } = require("crypto");
 // eslint-disable-next-line no-unused-vars
 const openai = new OpenAI({
     api_key: process.env.OPENAI_API_KEY,
 });
+*/
 // -- OpenAI API end
 
 
@@ -120,7 +122,7 @@ client.on("messageCreate", function(message)
     const trackName = trackAndAuthor.join(" by ").trim();
 
     if (authorName.length == 0 || trackName.length == 0) return;
-
+    /*
     const complimentPrompts = [
         `Write a brief, kind and motivational sentence about the music piece named "${trackName}" by ${authorName}.`,
         `Tell ${authorName} in a brief sentence that you are enjoying their song "${trackName}" so far!`,
@@ -133,6 +135,7 @@ client.on("messageCreate", function(message)
         `Show appreciation to ${authorName} for submitting "${trackName}" and share your thoughts on what makes it special. Use a single sentence.`,
         `Express your surprise at the unexpected musical developments in "${trackName}" by ${authorName} and how they enhance the listening experience. Be concise.`,
     ];
+    */
 
     // time exceeded
     const trackDurationSecsLimit = 210;
@@ -148,6 +151,7 @@ client.on("messageCreate", function(message)
 
     console.log(`Now Playing: **${trackName}** by **${authorName}**!`);
 
+    /*
     const minComplimentTimeMillis = parseInt(trackDurationInSecs * 0.4 * 1000);
     const maxComplimentTimeMillis = parseInt(trackDurationInSecs * 0.85 * 1000);
     const complimentTimeMillis = randomInt(minComplimentTimeMillis, maxComplimentTimeMillis);
@@ -166,6 +170,7 @@ client.on("messageCreate", function(message)
             message.channel.send(completion.choices[0].text);
         })();
     }, complimentTimeMillis);
+    */
 
 });
 
