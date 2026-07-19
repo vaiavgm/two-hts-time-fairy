@@ -1,18 +1,36 @@
 // Bot invitation link: https://discord.com/api/oauth2/authorize?client_id=881164920673165333&permissions=8&scope=bot%20applications.commands
 // Testing bot invite : https://discord.com/api/oauth2/authorize?client_id=888106813789200405&permissions=8&scope=bot%20applications.commands
 
+// ==========================================
+// 1. GLOBAL ANTI-CRASH SHIELD
+// ==========================================
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[ANTI-CRASH] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('[ANTI-CRASH] Uncaught Exception caught:', error);
+});
+
 const path = require("path");
 const fs = require("fs");
 
-const { Client, Intents } = require("discord.js");
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, "GUILD_MESSAGES"] });
+// Native v14 Import structure
+const { Client, GatewayIntentBits, ActivityType, Events } = require("discord.js");
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent // Critical for message text reading in v14
+    ] 
+});
 
 require("dotenv").config();
 
-
-// Determine, which token to use
+// ==========================================
+// 2. TOKEN & INITIALIZATION CONFIG
+// ==========================================
 const local_testing = process.env.TESTING;
-
 let temp_token = "";
 const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
 
@@ -29,149 +47,158 @@ else
 
 const token = temp_token;
 
-// Activate slash commands
+// ==========================================
+// 3. COMMAND LOADER ROUTINE
+// ==========================================
 client.commands = new Map();
 const commandsPath = path.join(__dirname, "modules");
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
 
-for (const file of commandFiles)
-{
-    const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
+try {
+    if (fs.existsSync(commandsPath)) {
+        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
 
-    // Set a new item in the Collection with the key as the command name
-    // and the value as the exported module
-    if ("data" in command && "execute" in command)
-    {
-        client.commands.set(command.data.name, command);
+        for (const file of commandFiles)
+        {
+            const filePath = path.join(commandsPath, file);
+            const command = require(filePath);
+
+            if ("data" in command && "execute" in command)
+            {
+                client.commands.set(command.data.name, command);
+            }
+            else
+            {
+                console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+            }
+        }
+    } else {
+        console.log(`[WARNING] Modules directory not found at ${commandsPath}`);
     }
-    else
-    {
-        console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-    }
+} catch (error) {
+    console.error("[CRITICAL] Failed to load command modules:", error);
 }
 
-// Execute once after startup
-client.once("ready", () =>
+// Fixed: Swapped once("ready") to once(Events.ClientReady) to eliminate the deprecation warning
+client.once(Events.ClientReady, () =>
 {
-    client.user.setActivity("/time", { type: "WATCHING" });
-    console.log("[INFO] Bot is ready! Hello :)");
-});
-
-// Execute on interaction
-client.on("interactionCreate", async interaction =>
-{
-    if (!interaction.isCommand()) return;
-
-    const user = client.users.cache.get(interaction.member.user.id);
-
-    const command = interaction.client.commands.get(interaction.commandName);
-
-    if (!command)
-    {
-        console.error(`No command matching ${interaction.commandName} was found.`);
-        return;
+    try {
+        if (client.user) {
+            client.user.setActivity("/time", { type: ActivityType.Watching }); 
+        }
+        console.log("[INFO] Bot is ready! Hello :)");
+    } catch (err) {
+        console.error("Error inside ready event listener:", err);
     }
-
-    await command.execute(interaction, user, client.commands);
 });
 
-
-/* at some point i want to figure out the way it reacts to numbers so that anying greater than [3:00]
-in the time gets it to say something about it being too long */
-
-// -- OpenAI API start (TODO - extract to separate file/module, if possible)
-/*
-const { OpenAI } = require("openai");
-const { randomInt } = require("crypto");
-// eslint-disable-next-line no-unused-vars
-const openai = new OpenAI({
-    api_key: process.env.OPENAI_API_KEY,
-});
-*/
-// -- OpenAI API end
-
-
-client.on("messageCreate", function(message)
+// ==========================================
+// 4. SAFE INTERACTION HANDLER
+// ==========================================
+client.on(Events.InteractionCreate, async interaction =>
 {
+    if (!interaction.isChatInputCommand()) return;
 
-    const userId = message.author.username;
-    const api_callers = ["vaia", "antik0959", "urinalpooper"];
+    try {
+        const user = interaction.user; 
+        const command = interaction.client.commands.get(interaction.commandName);
 
-    if (message.author.bot || !api_callers.includes(userId)) return;
-
-    let parsedMessage = message.content;
-    parsedMessage = parsedMessage.replace(/\*/g, "");
-
-    if (!parsedMessage.toLowerCase().startsWith("now playing: ")) return;
-    if (!parsedMessage.includes("[")) return;
-    if (!parsedMessage.includes("]")) return;
-
-    parsedMessage = parsedMessage.replace(/Now Playing: /gi, "");
-
-    const trackDurationString = parsedMessage.split("[")[1].split("]")[0];
-    const trackMins = parseInt(trackDurationString.split(":")[0]);
-    const trackSecs = parseInt(trackDurationString.split(":")[1]);
-
-    const trackDurationInSecs = trackMins * 60 + trackSecs;
-
-    if (isNaN(trackMins) || isNaN(trackSecs) || isNaN(trackDurationInSecs) || trackDurationInSecs <= 0) return;
-
-    const trackAndAuthor = parsedMessage.split("[")[0].split(/ by /g);
-    const authorName = trackAndAuthor.pop().trim();
-    const trackName = trackAndAuthor.join(" by ").trim();
-
-    if (authorName.length == 0 || trackName.length == 0) return;
-    /*
-    const complimentPrompts = [
-        `Write a brief, kind and motivational sentence about the music piece named "${trackName}" by ${authorName}.`,
-        `Tell ${authorName} in a brief sentence that you are enjoying their song "${trackName}" so far!`,
-        `Write a brief compliment to ${authorName} on the arrangement of their song "${trackName}".`,
-        `Thank ${authorName} for their submission of the track "${trackName}" and express nice thoughts about it. Be concise.`,
-        `Express surprise over how a musical section of the song "${trackName}" by ${authorName} developed. Be concise.`,
-        `Craft a positive and encouraging message about "${trackName}" by ${authorName} that highlights its emotional impact. Be concise.`,
-        `Write a brief note expressing your enjoyment of "${trackName}" by ${authorName} and how it's resonating with you. Be concise.`,
-        `Write a brief compliment to ${authorName} on their skillful arrangement of "${trackName}" and its ability to captivate listeners.`,
-        `Show appreciation to ${authorName} for submitting "${trackName}" and share your thoughts on what makes it special. Use a single sentence.`,
-        `Express your surprise at the unexpected musical developments in "${trackName}" by ${authorName} and how they enhance the listening experience. Be concise.`,
-    ];
-    */
-
-    // time exceeded
-    const trackDurationSecsLimit = 210;
-    if (trackDurationInSecs > trackDurationSecsLimit)
-    {
-        const secsExceeded = trackDurationInSecs - trackDurationSecsLimit;
-
-        setTimeout(() =>
+        if (!command)
         {
-            message.channel.send(`Hi **${authorName}**, please kindly respect the 3 minutes 30 seconds guideline. As it is customary, ${secsExceeded} seconds were deducted from your remaining lifetime.`);
-        }, 1000);
+            console.error(`No command matching ${interaction.commandName} was found.`);
+            return;
+        }
+
+        await command.execute(interaction, user, client.commands);
+    } catch (error) {
+        console.error(`Error executing command ${interaction.commandName}:`, error);
+        
+        const replyPayload = { content: 'There was an error while executing this command!', ephemeral: true };
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp(replyPayload);
+            } else {
+                await interaction.reply(replyPayload);
+            }
+        } catch (msgError) {
+            console.error("Failed to send error reply back to Discord channel:", msgError);
+        }
     }
-
-    console.log(`Now Playing: **${trackName}** by **${authorName}**!`);
-
-    /*
-    const minComplimentTimeMillis = parseInt(trackDurationInSecs * 0.4 * 1000);
-    const maxComplimentTimeMillis = parseInt(trackDurationInSecs * 0.85 * 1000);
-    const complimentTimeMillis = randomInt(minComplimentTimeMillis, maxComplimentTimeMillis);
-    // console.log(`min: ${minComplimentTimeMillis / 1000}s | max: ${maxComplimentTimeMillis / 1000}s | rand: ${complimentTimeMillis / 1000}s`);
-    setTimeout(() =>
-    {
-        (async () =>
-        {
-            const completion = await openai.completions.create({
-                model: "gpt-3.5-turbo-instruct",
-                prompt: complimentPrompts[randomInt(complimentPrompts.length)],
-                max_tokens: 100,
-            });
-            // message.deferReply();
-            // message.deleteReply();
-            message.channel.send(completion.choices[0].text);
-        })();
-    }, complimentTimeMillis);
-    */
-
 });
 
-client.login(token);
+// ==========================================
+// 5. SAFE MESSAGE CONTENT PARSER
+// ==========================================
+client.on(Events.MessageCreate, function(message)
+{
+    try {
+        if (!message || !message.author || message.author.bot) return;
+
+        const userId = message.author.username;
+        const api_callers = ["vaia", "antik0959", "urinalpooper"];
+
+        if (!api_callers.includes(userId)) return;
+
+        let parsedMessage = message.content;
+        if (!parsedMessage) return;
+        
+        parsedMessage = parsedMessage.replace(/\*/g, "");
+
+        if (!parsedMessage.toLowerCase().startsWith("now playing: ")) return;
+        if (!parsedMessage.includes("[") || !parsedMessage.includes("]")) return;
+
+        parsedMessage = parsedMessage.replace(/Now Playing: /gi, "");
+
+        const splitOpen = parsedMessage.split("[");
+        if (splitOpen.length < 2) return;
+        
+        const splitClose = splitOpen[1].split("]");
+        const trackDurationString = splitClose[0];
+        
+        if (!trackDurationString.includes(":")) return;
+        
+        const trackMins = parseInt(trackDurationString.split(":")[0]);
+        const trackSecs = parseInt(trackDurationString.split(":")[1]);
+        const trackDurationInSecs = trackMins * 60 + trackSecs;
+
+        if (isNaN(trackMins) || isNaN(trackSecs) || isNaN(trackDurationInSecs) || trackDurationInSecs <= 0) return;
+
+        const trackAndAuthor = splitOpen[0].split(/ by /g);
+        if (trackAndAuthor.length < 2) return;
+        
+        const authorName = trackAndAuthor.pop().trim();
+        const trackName = trackAndAuthor.join(" by ").trim();
+
+        if (authorName.length === 0 || trackName.length === 0) return;
+
+        const trackDurationSecsLimit = 210;
+        if (trackDurationInSecs > trackDurationSecsLimit)
+        {
+            const secsExceeded = trackDurationInSecs - trackDurationSecsLimit;
+
+            setTimeout(() =>
+            {
+                try {
+                    message.channel.send(`Hi **${authorName}**, please kindly respect the 3 minutes 30 seconds guideline. As it is customary, ${secsExceeded} seconds were deducted from your remaining lifetime.`)
+                        .catch(err => console.error("Error sending guideline warning message:", err));
+                } catch (timeoutErr) {
+                    console.error("Error within message submission timeout scope:", timeoutErr);
+                }
+            }, 1000);
+        }
+
+        console.log(`Now Playing: **${trackName}** by **${authorName}**!`);
+    } catch (err) {
+        console.error("Error parsing messageCreate event safely:", err);
+    }
+});
+
+// ==========================================
+// 6. DISCORD NETWORK CONNECTION LISTENERS
+// ==========================================
+client.on("error", (error) => {
+    console.error("Discord client encountered a network connectivity error:", error);
+});
+
+client.login(token).catch(err => {
+    console.error("Critical error during initial Discord login attempt:", err);
+});
