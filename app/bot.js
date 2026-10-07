@@ -4,12 +4,16 @@
 // ==========================================
 // 1. GLOBAL ANTI-CRASH SHIELD
 // ==========================================
+// Log, then exit non-zero so the host (Procfile worker) restarts the bot in a clean state
+// instead of leaving it running half-broken.
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('[ANTI-CRASH] Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
 });
 
 process.on('uncaughtException', (error) => {
-    console.error('[ANTI-CRASH] Uncaught Exception caught:', error);
+    console.error('[FATAL] Uncaught Exception:', error);
+    process.exit(1);
 });
 
 const path = require("path");

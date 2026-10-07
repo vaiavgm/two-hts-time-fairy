@@ -68,7 +68,7 @@ function rollDice(diceNotation, advantage = null)
     }
 
     // Construct the output embed
-    const embed = new Discord.MessageEmbed()
+    const embed = new Discord.EmbedBuilder()
         .setColor("#00ff00")
         .setTitle(`Rolled ${numDice}d${numSides} ${advantage ? "(" + advantage + ")" : ""}`)
         .setDescription(rolls.join(", ") + "\n**Result: " + total + "**");

@@ -65,10 +65,10 @@ module.exports = {
         const imageData = await encoder.out.getData();
 
         // Create a new attachment with the GIF image data
-        const attachment = new Discord.MessageAttachment(imageData, "alternating-images.gif");
+        const attachment = new Discord.AttachmentBuilder(imageData, "alternating-images.gif");
 
         // Create a new embed with the attachment
-        const embed = new Discord.MessageEmbed()
+        const embed = new Discord.EmbedBuilder()
             .setTitle("Alternating Images GIF")
             .setDescription("This GIF alternates between two randomized images.")
             .setImage("attachment://alternating-images.gif");

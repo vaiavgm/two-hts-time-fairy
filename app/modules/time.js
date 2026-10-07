@@ -1,20 +1,16 @@
 const partylink = "<http://chorus.thasauce.net:8000/compo.m3u>";
-function getCompoId()
+// Same numbering as getCompoId(), for an arbitrary instant (ms since epoch)
+function getCompoIdAt(ms)
 {
     // 2HTS250 was on that day
-    const date2HTS250 = new Date("2019-01-13");
-    const today = new Date();
+    const date2HTS250 = new Date("2019-01-13").getTime();
+    const weeks = Math.floor((ms - date2HTS250) / (1000 * 60 * 60 * 24 * 7));
+    return 250 + weeks;
+}
 
-    // Calculate the number of days between startDate and today
-    const daysSince2HTS250 = Math.floor((today - date2HTS250) / (1000 * 60 * 60 * 24));
-
-    // Calculate the number of weeks between startDate and today
-    const weeksSince2HTS250 = Math.floor(daysSince2HTS250 / 7);
-
-    // Add 250 and the number of weeks to get the current compo ID
-    const currentCompoId = 250 + weeksSince2HTS250;
-
-    return currentCompoId;
+function getCompoId()
+{
+    return getCompoIdAt(Date.now());
 }
 
 function handleLinks()
@@ -45,62 +41,101 @@ function secToStr(seconds)
 
 const Discord = require("discord.js");
 
+const COMPO_TZ = "Europe/Vienna";
+const viennaFormat = new Intl.DateTimeFormat("en-US", {
+    timeZone: COMPO_TZ,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    weekday: "short",
+});
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Vienna wall-clock fields for a given instant (ms since epoch)
+function viennaParts(ms)
+{
+    const p = {};
+    for (const { type, value } of viennaFormat.formatToParts(ms))
+    {
+        p[type] = value;
+    }
+    return {
+        year: +p.year,
+        month: +p.month,
+        day: +p.day,
+        hour: +p.hour,
+        minute: +p.minute,
+        second: +p.second,
+        weekday: WEEKDAYS.indexOf(p.weekday),
+    };
+}
+
+// Vienna's offset from UTC (ms) at a given instant, DST included
+function viennaOffsetMs(ms)
+{
+    const v = viennaParts(ms);
+    return Date.UTC(v.year, v.month - 1, v.day, v.hour, v.minute, v.second) - Math.floor(ms / 1000) * 1000;
+}
+
+// The real instant (ms) at which Vienna's wall clock reads the given time.
+// Day overflow is fine (e.g. day 32 rolls into next month).
+function viennaWallToInstant(year, month, day, hour, minute, second)
+{
+    const asUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+    // The offset must be taken at the target instant, not now, so DST changes in between are respected.
+    // Two passes settle the guess when the target lies on the other side of a DST change.
+    let instant = asUtc - viennaOffsetMs(asUtc);
+    instant = asUtc - viennaOffsetMs(instant);
+    return instant;
+}
+
 function handle2HTSTime()
 {
-    // create a new Discord embed
-    const embed = new Discord.MessageEmbed()
+    const embed = new Discord.EmbedBuilder()
         .setColor("#0099ff")
         .setTitle("2HTS Compo Info");
 
-    // get the current date and time in the specified timezone
-    const localDateStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
-    const localDate = new Date(localDateStr);
-
-
-    // localDate = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 3, 23, 17, 0);
+    const now = Date.now();
+    const vienna = viennaParts(now);
     const _2htsCompoId = getCompoId();
-    const compoStart = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 21, 0, 0);
-    compoStart.setHours(21);
-    const compoEnd = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 23, 16, 0);
-    compoEnd.setHours(23);
-    const compoMidnight = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0);
-    compoMidnight.setHours(0);
 
-    if (localDate.getDay() === 0 && localDate >= compoStart && localDate < compoEnd)
+    // Sunday of the current/next compo, in Vienna time (today, if today is Sunday)
+    const daysUntilSunday = (7 - vienna.weekday) % 7;
+    const compoStart = viennaWallToInstant(vienna.year, vienna.month, vienna.day + daysUntilSunday, 21, 0, 0);
+    const compoEnd = viennaWallToInstant(vienna.year, vienna.month, vienna.day + daysUntilSunday, 23, 16, 0);
+    const compoMidnight = viennaWallToInstant(vienna.year, vienna.month, vienna.day + daysUntilSunday + 1, 0, 0, 0);
+
+    if (now >= compoStart && now < compoEnd)
     {
         // 2HTS in progress
-        const secondsUntilCompoEnd = Math.floor((compoEnd - localDate) / 1000);
-        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Time left to compose: ${secToStr(secondsUntilCompoEnd)}\n\n${handleLinks()}`);
+        const secondsUntilCompoEnd = Math.floor((compoEnd - now) / 1000);
+        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Time left to compose: ${secToStr(secondsUntilCompoEnd)}
+
+${handleLinks()}`);
     }
-    else if (localDate.getDay() === 0 && localDate >= compoStart && localDate < compoMidnight)
+    else if (now >= compoEnd && now < compoMidnight)
     {
         // 2HTS party started
-        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Tune in to our listening party, and we hope to see you again next sunday!\n\n${handleLinks()}`);
+        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Tune in to our listening party, and we hope to see you again next sunday!
+
+${handleLinks()}`);
     }
     else
     {
         // Time until next 2HTS start
-        const daysUntilNext2HTS = (7 - localDate.getDay() + 7) % 7;
+        const secondsUntil2HTS = Math.floor((compoStart - now) / 1000);
+        // The label names the compo being counted down to; the links below keep pointing at the compo just held.
+        const upcomingCompoId = getCompoIdAt(compoStart);
+        embed.setDescription(`Time until **2HTS${upcomingCompoId}**: ${secToStr(secondsUntil2HTS)}
 
-        const localTZOffset = localDate.getTimezoneOffset();
-        const futureTZOffset = compoStart.getTimezoneOffset();
-
-        const TZDeltaMinutes = localTZOffset - futureTZOffset;
-
-        const secondsUntil2HTS =
-            // convert days into seconds
-            (daysUntilNext2HTS * 24 * 60 * 60) +
-            // convert hours until 20:00 GMT into seconds
-            ((new Date(compoStart).getUTCHours() * 60 * 60) - (localDate.getUTCHours() * 60 * 60)
-            // convert minutes to seconds, and apply seconds difference
-            - ((localDate.getMinutes()) * 60) - localDate.getSeconds())
-            // convert DST stuff to seconds and subtract them
-            - (TZDeltaMinutes * 60);
-        embed.setDescription(`Time until **2HTS${_2htsCompoId}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}`);
-        // embed.setDescription(`Time until **2HTS${_2htsCompoId + 1}**: ${secToStr(secondsUntil2HTS)}\n\n${handleLinks()}\nCurrentUTCHour: ${localDate.getUTCHours()} | CompoUTCHour: ${compoStart.getUTCHours()}`);
+${handleLinks()}`);
     }
 
-    // return the Discord embed
     return embed;
 }
 

@@ -16,7 +16,7 @@ module.exports = {
         const reaperEmote = client.emojis.cache.find(emoji => emoji.name === "reaper").id;
         const reasonEmote = client.emojis.cache.find(emoji => emoji.name === "reason").id;
 
-        const roleEmbed = new Discord.MessageEmbed()
+        const roleEmbed = new Discord.EmbedBuilder()
             .setColor("#ffffff")
             .setTitle("React to choose a role")
             .setDescription("Choosing a role will make you taggable, e.g. @REAPER, to get help for your DAW!");
