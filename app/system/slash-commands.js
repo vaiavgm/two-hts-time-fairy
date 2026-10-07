@@ -2,6 +2,12 @@
 // To make another module available there, add it as a choice in admin.js, e.g. { name: "dice", value: "dice" }
 // Uses discord.js' own guild command manager, so no separate REST client, token or client ID is needed.
 
+// Error messages can carry long stack/require traces; only show the first line to users
+function firstLine(error)
+{
+    return String(error.message).split(/\r?\n/)[0];
+}
+
 function getCommandData(filename)
 {
     const command = require(`../modules/${filename}`);
@@ -28,8 +34,7 @@ async function addCommandsToGuild(interaction, filename)
     catch (error)
     {
         console.error(error);
-        return `Could not add the slash command for module **${filename}**: ${error.message.split("
-")[0]}`;
+        return `Could not add the slash command for module **${filename}**: ${firstLine(error)}`;
     }
 }
 
@@ -54,8 +59,7 @@ async function removeCommandsFromGuild(interaction, filename)
     catch (error)
     {
         console.error(error);
-        return `Could not remove the slash command for module **${filename}**: ${error.message.split("
-")[0]}`;
+        return `Could not remove the slash command for module **${filename}**: ${firstLine(error)}`;
     }
 }
 
@@ -72,8 +76,7 @@ async function removeAllCommandsFromGuild(interaction)
     catch (error)
     {
         console.error(error);
-        return `Could not remove the slash commands: ${error.message.split("
-")[0]}`;
+        return `Could not remove the slash commands: ${firstLine(error)}`;
     }
 }
 
