@@ -102,8 +102,6 @@ module.exports = {
 
     async execute(interaction, user)
     {
-        participants.push(new Participant(user));
-
         const modifier = interaction.options.getString("modifier");
         const result = provideModifier(modifier, user);
         user.send(result).catch(console.error);
