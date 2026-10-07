@@ -1,26 +1,42 @@
-// Bot invitation link: https://discord.com/api/oauth2/authorize?client_id=881164920673165333&permissions=8&scope=bot%20applications.commands
-// Testing bot invite : https://discord.com/api/oauth2/authorize?client_id=888106813789200405&permissions=8&scope=bot%20applications.commands
+// Bot invitation link: https://discord.com/api/oauth2/authorize?client_id=881164920673165333&permissions=268553280&scope=bot%20applications.commands
+// Testing bot invite : https://discord.com/api/oauth2/authorize?client_id=888106813789200405&permissions=268553280&scope=bot%20applications.commands
+// permissions=268553280 is the minimum the bot needs: View Channels, Send Messages, Embed Links, Attach Files,
+// Add Reactions, Read Message History, Manage Roles (for /reactionrole; the bot's role must sit above the roles it hands out).
 
 // ==========================================
-// 1. GLOBAL ANTI-CRASH SHIELD
+// 1. GLOBAL ERROR HANDLING
 // ==========================================
-// Log, then exit non-zero so the host (Procfile worker) restarts the bot in a clean state
-// instead of leaving it running half-broken.
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
-    process.exit(1);
-});
+// A stray error (e.g. one failed command) must not take the whole bot down: log it and keep running.
+// Only a burst of errors in a short time suggests the bot is stuck in a broken state, so only then
+// exit and let the host restart it.
+const ERROR_BURST_LIMIT = 10;
+const ERROR_BURST_WINDOW_MS = 60 * 1000;
+let recentErrorTimes = [];
 
-process.on('uncaughtException', (error) => {
-    console.error('[FATAL] Uncaught Exception:', error);
-    process.exit(1);
-});
+function noteUnexpectedError(kind, error)
+{
+    console.error(`[ERROR] ${kind}:`, error);
+
+    const now = Date.now();
+    recentErrorTimes = recentErrorTimes.filter(t => now - t < ERROR_BURST_WINDOW_MS);
+    recentErrorTimes.push(now);
+
+    if (recentErrorTimes.length >= ERROR_BURST_LIMIT)
+    {
+        console.error(`[FATAL] ${ERROR_BURST_LIMIT} unexpected errors within ${ERROR_BURST_WINDOW_MS / 1000}s, exiting so the host can restart the bot.`);
+        process.exit(1);
+    }
+}
+
+process.on("unhandledRejection", (reason) => noteUnexpectedError("Unhandled rejection", reason));
+process.on("uncaughtException", (error) => noteUnexpectedError("Uncaught exception", error));
 
 const path = require("path");
 const fs = require("fs");
 
 // Native v14 Import structure
-const { Client, GatewayIntentBits, ActivityType, Events, MessageFlags } = require("discord.js");
+const { Client, GatewayIntentBits, ActivityType, Events, DiscordjsErrorCodes, MessageFlags } = require("discord.js");
+const { isTrackReporter } = require("./system/auth");
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
@@ -167,10 +183,7 @@ client.on(Events.MessageCreate, function(message)
     try {
         if (!message || !message.author || message.author.bot) return;
 
-        const userId = message.author.username;
-        const api_callers = ["vaia", "antik0959", "urinalpooper"];
-
-        if (!api_callers.includes(userId)) return;
+        if (!isTrackReporter(message.author)) return;
 
         let parsedMessage = message.content;
         if (!parsedMessage) return;
@@ -229,10 +242,52 @@ client.on(Events.MessageCreate, function(message)
 // ==========================================
 // 6. DISCORD NETWORK CONNECTION LISTENERS
 // ==========================================
-client.on("error", (error) => {
+client.on(Events.Error, (error) => {
     console.error("Discord client encountered a network connectivity error:", error);
 });
 
-client.login(token).catch(err => {
-    console.error("Critical error during initial Discord login attempt:", err);
+// discord.js reconnects on its own after a dropped connection; these logs just make that visible.
+client.on(Events.ShardDisconnect, (event, shardId) => console.warn(`[WARN] Shard ${shardId} disconnected (code ${event.code}), discord.js will reconnect.`));
+client.on(Events.ShardReconnecting, (shardId) => console.log(`[INFO] Shard ${shardId} reconnecting...`));
+client.on(Events.ShardResume, (shardId) => console.log(`[INFO] Shard ${shardId} resumed.`));
+client.on(Events.ShardError, (error, shardId) => console.error(`[WARN] Shard ${shardId} error:`, error));
+
+// The session can no longer be recovered by discord.js, so a fresh start is the only way back.
+client.on(Events.Invalidated, () =>
+{
+    console.error("[FATAL] Discord session was invalidated, exiting so the host can restart the bot.");
+    process.exit(1);
 });
+
+// ==========================================
+// 7. LOGIN
+// ==========================================
+const LOGIN_RETRY_MS = 30 * 1000;
+// Retrying cannot fix these: they need a config change, so fail loudly instead of looping forever.
+const UNRECOVERABLE_LOGIN_ERRORS = [DiscordjsErrorCodes.TokenInvalid, DiscordjsErrorCodes.TokenMissing, DiscordjsErrorCodes.DisallowedIntents];
+
+async function connect()
+{
+    for (;;)
+    {
+        try
+        {
+            await client.login(token);
+            return;
+        }
+        catch (err)
+        {
+            if (UNRECOVERABLE_LOGIN_ERRORS.includes(err.code))
+            {
+                console.error("[FATAL] Discord login cannot succeed with the current configuration (check the token and the enabled intents):", err);
+                process.exit(1);
+            }
+
+            // e.g. a temporary network or Discord outage at startup: keep trying instead of staying offline
+            console.error(`Discord login failed, retrying in ${LOGIN_RETRY_MS / 1000}s:`, err);
+            await new Promise(resolve => setTimeout(resolve, LOGIN_RETRY_MS));
+        }
+    }
+}
+
+connect();

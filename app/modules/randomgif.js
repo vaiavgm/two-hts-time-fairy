@@ -39,11 +39,6 @@ module.exports = {
         // Create a new canvas with dimensions 50x50 pixels
         const canvas = Canvas.createCanvas(100, 100);
 
-        // Create two images with randomized colors
-        // const image1 = await createRandomizedImage(canvas);
-        // 
-        // const image2 = await createRandomizedImage(canvas);
-
         // Create a new GIF with the two images alternating
         const encoder = new gifEncoder(canvas.width, canvas.height);
         // 500ms between each frame
@@ -65,7 +60,7 @@ module.exports = {
         const imageData = await encoder.out.getData();
 
         // Create a new attachment with the GIF image data
-        const attachment = new Discord.AttachmentBuilder(imageData, "alternating-images.gif");
+        const attachment = new Discord.AttachmentBuilder(imageData, { name: "alternating-images.gif" });
 
         // Create a new embed with the attachment
         const embed = new Discord.EmbedBuilder()
@@ -73,6 +68,6 @@ module.exports = {
             .setDescription("This GIF alternates between two randomized images.")
             .setImage("attachment://alternating-images.gif");
 
-        interaction.editReply({ embeds: [embed], files: [attachment] });
+        await interaction.editReply({ embeds: [embed], files: [attachment] });
     },
 };

@@ -1,19 +1,7 @@
-function isAdmin(user)
-{
-    const userId = user.username;
-    const admins = ["vaia", "antik0959"];
-
-    // console.log(user.username);
-    // console.log(user.discriminator);
-
-    return admins.includes(userId);
-}
-
-
-const { MessageFlags } = require("discord.js");
+const { MessageFlags, SlashCommandBuilder } = require("discord.js");
+const { isAdmin } = require("../system/auth");
 const slash_functions = require("../system/slash-commands");
 
-const { SlashCommandBuilder } = require("discord.js");
 module.exports = {
 
     data: new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.")
@@ -41,6 +29,7 @@ module.exports = {
         let result = "Admin rights required.";
         if (!isAdmin(user))
         {
+            console.log(`[ADMIN] Denied ${user.username} (ID ${user.id})`);
             await interaction.reply({ content: result, flags: MessageFlags.Ephemeral });
             return;
         }
@@ -50,7 +39,7 @@ module.exports = {
         // critical commands need a manual input of "confirm"
         const confirm = interaction.options.getString("confirm") == "confirm";
 
-        console.log(`[ADMIN] Executing command [${cmd}] on app [${app}]`);
+        console.log(`[ADMIN] ${user.username} (ID ${user.id}) executing command [${cmd}] on app [${app}]`);
 
         result = "Unknown app or command. Enabling/Disabling Slash Commands require the 'confirm' option as parameter.";
 

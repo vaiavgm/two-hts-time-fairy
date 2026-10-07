@@ -63,25 +63,7 @@ async function removeCommandsFromGuild(interaction, filename)
     }
 }
 
-async function removeAllCommandsFromGuild(interaction)
-{
-    const guild = interaction.guild;
-    if (!guild) return "Slash commands can only be managed from within a server.";
-
-    try
-    {
-        await guild.commands.set([]);
-        return `[ADMIN] Removed all slash commands from guild **${guild.name}**`;
-    }
-    catch (error)
-    {
-        console.error(error);
-        return `Could not remove the slash commands: ${firstLine(error)}`;
-    }
-}
-
 module.exports = {
     addCommandsToGuild,
     removeCommandsFromGuild,
-    removeAllCommandsFromGuild,
 };

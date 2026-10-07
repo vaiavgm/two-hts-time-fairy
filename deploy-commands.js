@@ -91,17 +91,4 @@ for (const rest of rest_requests)
     })();
 }
 
-// applicationCommands updates commands on all servers, but will take up to one hour
-/*
-(async () => {
-  try {
-    await rest.put(
-      Routes.applicationCommands(clientId),
-      { body: commands },
-    );
-  }
-  catch (error) {
-    console.error(error);
-  }
-})();
-*/
+// To register on all servers at once instead (takes up to an hour to propagate), use Routes.applicationCommands(clientId).

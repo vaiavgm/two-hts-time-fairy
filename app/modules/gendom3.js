@@ -58,9 +58,6 @@ function get_random_theme_for_participant(participant)
     modifier_buffer.splice(random_modifier_id, 1);
     genre_buffer.splice(random_genre_id, 1);
 
-    console.log(modifier_buffer);
-    console.log(genre_buffer);
-
     participant.generatedTheme = theme_result;
     return "Your theme is: ``" + theme_result + "``";
 }
@@ -89,8 +86,6 @@ function provideModifier(modifier, user)
     {
         return "Your chosen modifier is \"" + modifier + "\"";
     }
-
-    console.log(participant);
 
     return get_random_theme_for_participant(participant);
 }

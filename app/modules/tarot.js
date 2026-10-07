@@ -64,11 +64,6 @@ function getTheme(card, arcanumTime)
     return "Your theme for this week is: \n\n``" + card.card + "``, the arcanum of your``" + arcanumTime + "``!\n\n\nThe meaning of your major arcanum is:\n```" + card.description + "```";
 }
 
-function redraw()
-{
-    arcanaCards = getArcana();
-}
-
 function tarot(user)
 {
     if (arcanaCards.length < 1)
@@ -112,10 +107,5 @@ module.exports = {
     {
         await user.send(tarot(user));
         await interaction.reply("Check your PM for your theme!");
-    },
-
-    async tarot_deprecated(message)
-    {
-        await message.channel.send(await this.tarot(message.author));
     },
 };
