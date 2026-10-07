@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("@discordjs/builders");
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder().setName("roll").setDescription("Roll some virtual dice!")
@@ -29,7 +29,9 @@ function rollDice(diceNotation, advantage = null)
     // Parse the notation string into the number of dice and the number of sides per die
     let [numDice, numSides] = diceNotation.split("d");
 
-    // Check if the inputs are valid
+    // Check if the inputs are valid (an empty string, as in "d20" or "2d", counts as missing)
+    numSides = numSides === undefined || numSides.trim() === "" ? NaN : Number(numSides);
+    numDice = numDice === undefined || numDice.trim() === "" ? NaN : Number(numDice);
     if (isNaN(numSides))
     {
         numSides = 20;
@@ -70,7 +72,7 @@ function rollDice(diceNotation, advantage = null)
     // Construct the output embed
     const embed = new Discord.EmbedBuilder()
         .setColor("#00ff00")
-        .setTitle(`Rolled ${numDice}d${numSides} ${advantage ? "(" + advantage + ")" : ""}`)
+        .setTitle(`Rolled ${numDice}d${numSides} ${advantage ? "(" + advantage + ")" : ""}`.trim())
         .setDescription(rolls.join(", ") + "\n**Result: " + total + "**");
 
     return embed;

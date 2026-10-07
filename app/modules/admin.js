@@ -10,9 +10,10 @@ function isAdmin(user)
 }
 
 
+const { MessageFlags } = require("discord.js");
 const slash_functions = require("../system/slash-commands");
 
-const { SlashCommandBuilder } = require("@discordjs/builders");
+const { SlashCommandBuilder } = require("discord.js");
 module.exports = {
 
     data: new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.")
@@ -24,7 +25,8 @@ module.exports = {
                     { name: "time", value: "time" },
                     { name: "tarot", value: "tarot" },
                     { name: "dice", value: "dice" },
-                    { name: "randomgif", value: "randomgif" }))
+                    { name: "randomgif", value: "randomgif" },
+                    { name: "reactionrole", value: "reactionrole" }))
         .addStringOption(option =>
             option.setName("command")
                 .setDescription("Which command do you want to execute? (e.g. \"start\")")
@@ -39,7 +41,7 @@ module.exports = {
         let result = "Admin rights required.";
         if (!isAdmin(user))
         {
-            await interaction.reply({ content: result, ephemeral: false });
+            await interaction.reply({ content: result, flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -55,11 +57,17 @@ module.exports = {
         switch (cmd)
         {
         case "reset":
-            result = await commands.get(app).reset();
-            break;
         case "start":
-            result = await commands.get(app).start();
+        {
+            const target = commands.get(app);
+            if (!target || typeof target[cmd] !== "function")
+            {
+                result = `The app **${app}** does not support the "${cmd}" command.`;
+                break;
+            }
+            result = await target[cmd]();
             break;
+        }
         case "activate":
             // break, if "confirm" has not been written
             if (!confirm) break;
@@ -72,6 +80,6 @@ module.exports = {
             break;
         }
 
-        await interaction.reply({ content: result, ephemeral: false });
+        await interaction.reply({ content: result });
     },
 };

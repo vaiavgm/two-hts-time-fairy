@@ -142,7 +142,7 @@ ${handleLinks()}`);
     return embed;
 }
 
-const { SlashCommandBuilder } = require("@discordjs/builders");
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder().setName("time").setDescription("Shows the time until the next compo"),

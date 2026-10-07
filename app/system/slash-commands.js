@@ -1,157 +1,80 @@
-// to add additional slash commands, use admin.js and add e.g. { name: "dice", value: "dice" }
+// Per-guild slash command management, used by the /admin command.
+// To make another module available there, add it as a choice in admin.js, e.g. { name: "dice", value: "dice" }
+// Uses discord.js' own guild command manager, so no separate REST client, token or client ID is needed.
 
-let token, clientId;
-if (process.env.TESTING !== undefined)
+function getCommandData(filename)
 {
-    token = process.env.FAKE_TOKEN;
-    clientId = process.env.FAKE_CLIENT_ID;
-}
-else
-{
-    token = process.env.DISCORD_TOKEN;
-    clientId = process.env.DISCORD_CLIENT_ID;
-}
+    const command = require(`../modules/${filename}`);
 
-const { REST } = require("@discordjs/rest");
-const { Routes } = require("discord-api-types/v9");
-
-const request_methods = {
-    PUT: "put",
-    POST: "post",
-    GET: "get",
-    DELETE: "delete",
-};
-
-
-function getCommandsFromFile(file)
-{
-    try
+    if (!command || !command.data)
     {
-        const command = require(`../modules/${file}`);
-
-        if (!command || !command.data)
-        {
-            throw new Error(`Invalid command file: ${file}.js`);
-        }
-        return command.data;
+        throw new Error(`Invalid command file: ${filename}.js`);
     }
-    catch (error)
-    {
-        console.error(error);
-        return [];
-    }
-}
-
-
-async function executeDiscordApiRequest(request_method, guild, commands, commandId)
-{
-    // Create a new REST client for sending requests to the Discord API
-    const rest = new REST({ version: "10" }).setToken(token);
-
-    console.log("Executing " + request_method);
-
-    try
-    {
-        let response;
-        switch (request_method)
-        {
-        case request_methods.PUT:
-            response = await rest.put(
-                Routes.applicationGuildCommands(clientId, guild.id),
-                { body: commands },
-            );
-            break;
-        case request_methods.POST:
-            for (let i = 0; i < commands.length; i++)
-            {
-                response = await rest.post(
-                    Routes.applicationGuildCommands(clientId, guild.id),
-                    { body: commands[i] },
-                );
-            }
-            break;
-        case request_methods.DELETE:
-            response = await rest.delete(
-                Routes.applicationGuildCommand(clientId, guild.id, commandId));
-        }
-
-        return response.data;
-    }
-    catch (error)
-    {
-        console.error(error);
-    }
+    return command.data.toJSON();
 }
 
 async function addCommandsToGuild(interaction, filename)
 {
-    const commands = getCommandsFromFile(filename);
     const guild = interaction.guild;
+    if (!guild) return "Slash commands can only be managed from within a server.";
 
-    // Send a request to the Discord API to register the new slash commands in the guild
-    await executeDiscordApiRequest(
-        request_methods.POST,
-        guild,
-        [commands],
-    );
-
-    return `Attempting to add slash commands to guild **${guild.name}** for module: **${filename}**`;
+    try
+    {
+        const data = getCommandData(filename);
+        // creates the command, or updates it if a command with that name already exists
+        await guild.commands.create(data);
+        return `Added slash command **/${data.name}** to guild **${guild.name}** (module: **${filename}**).`;
+    }
+    catch (error)
+    {
+        console.error(error);
+        return `Could not add the slash command for module **${filename}**: ${error.message.split("
+")[0]}`;
+    }
 }
 
 async function removeCommandsFromGuild(interaction, filename)
 {
     const guild = interaction.guild;
-    const commands = getCommandsFromFile(filename);
-    let commandId = -1;
+    if (!guild) return "Slash commands can only be managed from within a server.";
 
-    const rest = new REST({ version: "10" }).setToken(token);
-    const allCmds = await rest.get(Routes.applicationGuildCommands(clientId, interaction.guild.id));
-    allCmds.forEach(cmd =>
+    try
     {
-        if (commands.name == cmd.name)
+        const data = getCommandData(filename);
+        const registered = (await guild.commands.fetch()).find(cmd => cmd.name === data.name);
+
+        if (!registered)
         {
-            commandId = cmd.id;
-            // console.log(`Command ${cmd.name} has ID ${cmd.id}`);
+            return `Slash command **/${data.name}** is not registered in guild **${guild.name}**.`;
         }
-    });
 
-    if (commandId < 0)
-    {
-        // console.log(`No ID found for slash command ${commands.name}!`);
-        return `No ID found for slash command ${commands.name}!`;
+        await guild.commands.delete(registered);
+        return `Removed slash command **/${data.name}** from guild **${guild.name}** (module: **${filename}**).`;
     }
-
-
-
-    // Send a request to the Discord API to delete the slash commands from the guild
-    await executeDiscordApiRequest(
-        request_methods.DELETE,
-        guild,
-        null,
-        commandId,
-    );
-
-    return `Attempting to remove slash commands from guild **${guild.name}** for module: **${filename}**`;
+    catch (error)
+    {
+        console.error(error);
+        return `Could not remove the slash command for module **${filename}**: ${error.message.split("
+")[0]}`;
+    }
 }
 
 async function removeAllCommandsFromGuild(interaction)
 {
     const guild = interaction.guild;
-    const guildCommands = await guild.commands.fetch();
+    if (!guild) return "Slash commands can only be managed from within a server.";
 
-    console.log("Registered Guild Commands:");
-    for (const cmd in guildCommands)
+    try
     {
-        console.log(cmd);
+        await guild.commands.set([]);
+        return `[ADMIN] Removed all slash commands from guild **${guild.name}**`;
     }
-
-    // Send a request to the Discord API to delete all slash commands from the guild
-    await executeDiscordApiRequest(
-        request_methods.PUT,
-        guild,
-        [],
-    );
-    return `[ADMIN] Removed all slash commands from guild **${guild.name}**`;
+    catch (error)
+    {
+        console.error(error);
+        return `Could not remove the slash commands: ${error.message.split("
+")[0]}`;
+    }
 }
 
 module.exports = {

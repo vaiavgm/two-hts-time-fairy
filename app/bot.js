@@ -20,7 +20,7 @@ const path = require("path");
 const fs = require("fs");
 
 // Native v14 Import structure
-const { Client, GatewayIntentBits, ActivityType, Events } = require("discord.js");
+const { Client, GatewayIntentBits, ActivityType, Events, MessageFlags } = require("discord.js");
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
@@ -64,15 +64,25 @@ try {
         for (const file of commandFiles)
         {
             const filePath = path.join(commandsPath, file);
-            const command = require(filePath);
 
-            if ("data" in command && "execute" in command)
+            // Load each module on its own, so one broken module (e.g. a native dependency
+            // failing to load) only disables itself instead of every module after it.
+            try
             {
-                client.commands.set(command.data.name, command);
+                const command = require(filePath);
+
+                if ("data" in command && "execute" in command)
+                {
+                    client.commands.set(command.data.name, command);
+                }
+                else
+                {
+                    console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+                }
             }
-            else
+            catch (moduleError)
             {
-                console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+                console.error(`[ERROR] Failed to load command module ${file}, skipping it:`, moduleError);
             }
         }
     } else {
@@ -100,6 +110,26 @@ client.once(Events.ClientReady, () =>
 // ==========================================
 client.on(Events.InteractionCreate, async interaction =>
 {
+    // Button clicks go to the module whose name prefixes the button's customId (e.g. "reactionrole:REAPER")
+    if (interaction.isButton())
+    {
+        try
+        {
+            const owner = interaction.customId.split(":")[0];
+            const command = interaction.client.commands.get(owner);
+            if (command && typeof command.handleButton === "function")
+            {
+                await command.handleButton(interaction);
+            }
+        }
+        catch (error)
+        {
+            console.error(`Error handling button ${interaction.customId}:`, error);
+            interaction.reply({ content: "Something went wrong with that button.", flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
+        return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     try {
@@ -116,7 +146,7 @@ client.on(Events.InteractionCreate, async interaction =>
     } catch (error) {
         console.error(`Error executing command ${interaction.commandName}:`, error);
         
-        const replyPayload = { content: 'There was an error while executing this command!', ephemeral: true };
+        const replyPayload = { content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral };
         try {
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp(replyPayload);

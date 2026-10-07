@@ -27,7 +27,7 @@ async function createRandomizedImage(canvas)
 
 }
 
-const { SlashCommandBuilder } = require("@discordjs/builders");
+const { SlashCommandBuilder } = require("discord.js");
 module.exports = {
 
     data: new SlashCommandBuilder().setName("randomgif").setDescription("Creates a randomized animated gif"),

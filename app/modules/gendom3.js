@@ -95,7 +95,7 @@ function provideModifier(modifier, user)
     return get_random_theme_for_participant(participant);
 }
 
-const { SlashCommandBuilder } = require("@discordjs/builders");
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder().setName("gendom3").setDescription("Provide a modifier and receive a random genre with a random modifier!")

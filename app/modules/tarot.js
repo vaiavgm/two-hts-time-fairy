@@ -103,7 +103,7 @@ function tarot(user)
     return getTheme(arcanum, newParticipant.arcanumTime);
 }
 
-const { SlashCommandBuilder } = require("@discordjs/builders");
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder().setName("tarot").setDescription("shows your past, present, or future"),

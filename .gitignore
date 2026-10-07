@@ -12,6 +12,5 @@ tags.temp
 bin/*
 obj/*
 node_modules/*
-/package-lock.json
 
 *.jpg
