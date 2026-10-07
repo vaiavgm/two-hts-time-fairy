@@ -116,6 +116,7 @@ client.once(Events.ClientReady, () =>
             client.user.setActivity("/time", { type: ActivityType.Watching }); 
         }
         console.log("[INFO] Bot is ready! Hello :)");
+        console.log(`[INFO] Installed in ${client.guilds.cache.size} server(s): ${client.guilds.cache.map(g => `${g.name} (${g.id})`).join(", ") || "none"}`);
     } catch (err) {
         console.error("Error inside ready event listener:", err);
     }
