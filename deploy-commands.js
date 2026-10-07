@@ -1,24 +1,44 @@
-// to update slash commands, execute
-// node deploy-commands.js
+// Registers the slash commands with Discord. Say explicitly which bot to update:
+//   node deploy-commands.js prod                  updates the real TimeFairy
+//   node deploy-commands.js test                  updates the FakeFairy
+//   node deploy-commands.js <prod|test> --clear-global
+//        additionally removes that bot's GLOBAL commands, e.g. to get rid of duplicates left over
+//        from an old global registration (this script only registers per-server commands)
+// The target is deliberately not taken from TESTING in .env, so a leftover setting cannot send
+// production commands to the wrong bot.
 
 require("dotenv").config();
 const fs = require("fs");
 
-let clientId, servers, token;
-const local_testing = process.env.TESTING;
+const target = process.argv[2];
+const clearGlobal = process.argv.includes("--clear-global");
 
-if (local_testing !== undefined)
+let clientId, servers, token;
+
+if (target === "test")
 {
-    console.log("TESTING is set, updating FakeFairy");
+    console.log("Updating FakeFairy (config-local.json, FAKE_TOKEN)");
     ({ clientId, servers } = require("./config-local.json"));
     token = process.env.FAKE_TOKEN;
 }
-else
+else if (target === "prod")
 {
-    console.log("Production mode, updating TimeFairy (set 'TESTING=true' in .env for FakeFairy)");
+    console.log("Updating TimeFairy (config.json, DISCORD_TOKEN)");
     ({ clientId, servers } = require("./config.json"));
     token = process.env.DISCORD_TOKEN;
 }
+else
+{
+    console.error("Usage: node deploy-commands.js <prod|test> [--clear-global]");
+    process.exit(1);
+}
+
+if (!token)
+{
+    console.error(`No token found for "${target}" in .env (${target === "test" ? "FAKE_TOKEN" : "DISCORD_TOKEN"}).`);
+    process.exit(1);
+}
+console.log(`Application ID: ${clientId}`);
 
 const { REST, Routes } = require("discord.js");
 
@@ -83,6 +103,22 @@ for (const rest of rest_requests)
             });
             console.log("Successfully registered application commands for server " + rest.serverId + ".");
 
+        }
+        catch (error)
+        {
+            console.error(error);
+        }
+    })();
+}
+
+if (clearGlobal)
+{
+    (async () =>
+    {
+        try
+        {
+            await new REST({ version: "10" }).setToken(token).put(Routes.applicationCommands(clientId), { body: [] });
+            console.log("Removed all global commands for application " + clientId + ".");
         }
         catch (error)
         {
