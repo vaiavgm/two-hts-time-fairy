@@ -1,10 +1,13 @@
 const partylink = "<http://chorus.thasauce.net:8000/compo.m3u>";
-// Same numbering as getCompoId(), for an arbitrary instant (ms since epoch)
+// Compo ID for an arbitrary instant (ms since epoch). The ID counts weeks in Vienna's calendar,
+// so it moves on at Sunday 00:00 Vienna time.
 function getCompoIdAt(ms)
 {
     // 2HTS250 was on that day
-    const date2HTS250 = new Date("2019-01-13").getTime();
-    const weeks = Math.floor((ms - date2HTS250) / (1000 * 60 * 60 * 24 * 7));
+    const date2HTS250 = Date.UTC(2019, 0, 13);
+    const v = viennaParts(ms);
+    const viennaDate = Date.UTC(v.year, v.month - 1, v.day);
+    const weeks = Math.floor((viennaDate - date2HTS250) / (1000 * 60 * 60 * 24 * 7));
     return 250 + weeks;
 }
 
