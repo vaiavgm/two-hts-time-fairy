@@ -1,4 +1,10 @@
 const partylink = "<http://chorus.thasauce.net:8000/compo.m3u>";
+
+function compoUrl(compoId)
+{
+    return `<http://compo.thasauce.net/rounds/view/2HTS${compoId}>`;
+}
+
 // Compo ID for an arbitrary instant (ms since epoch). The ID counts weeks in Vienna's calendar,
 // so it moves on at Sunday 00:00 Vienna time.
 function getCompoIdAt(ms)
@@ -11,19 +17,9 @@ function getCompoIdAt(ms)
     return 250 + weeks;
 }
 
-function getCompoId()
-{
-    return getCompoIdAt(Date.now());
-}
-
-function handleLinks()
-{
-    const compo_id = getCompoId();
-    return `Link to Chorus: ${partylink}
-Here is the latest compo upload page: <http://compo.thasauce.net/rounds/view/2HTS${compo_id}>`;
-}
-
-
+// Exact static breakdown, as of the moment it is computed. Currently not shown (the live Discord
+// timestamps are used instead), but kept in case the static countdowns are brought back.
+// eslint-disable-next-line no-unused-vars
 function secToStr(seconds)
 {
     const days = Math.floor(seconds / 86400);
@@ -39,6 +35,13 @@ function secToStr(seconds)
     }
     result_string += `${hours.toString().padStart(2, "0")}h ${minutes.toString().padStart(2, "0")}m ${remainingSeconds.toString().padStart(2, "0")}s`;
     return `\`${result_string}\``;
+}
+
+// Discord renders these in each viewer's own timezone: F = full date and time, t = short time,
+// R = live relative countdown ("in 3 days"). R is used for the upcoming compo and the submission deadline.
+function discordTime(ms, style)
+{
+    return `<t:${Math.floor(ms / 1000)}:${style}>`;
 }
 
 
@@ -97,48 +100,53 @@ function viennaWallToInstant(year, month, day, hour, minute, second)
     return instant;
 }
 
-function handle2HTSTime()
+const COMPO_START = { hour: 21, minute: 0 };
+const COMPO_END = { hour: 23, minute: 16 };
+
+function handle2HTSTime(now = Date.now())
 {
     const embed = new Discord.EmbedBuilder()
         .setColor("#0099ff")
         .setTitle("2HTS Compo Info");
 
-    const now = Date.now();
     const vienna = viennaParts(now);
-    const _2htsCompoId = getCompoId();
 
     // Sunday of the current/next compo, in Vienna time (today, if today is Sunday)
-    const daysUntilSunday = (7 - vienna.weekday) % 7;
-    const compoStart = viennaWallToInstant(vienna.year, vienna.month, vienna.day + daysUntilSunday, 21, 0, 0);
-    const compoEnd = viennaWallToInstant(vienna.year, vienna.month, vienna.day + daysUntilSunday, 23, 16, 0);
-    const compoMidnight = viennaWallToInstant(vienna.year, vienna.month, vienna.day + daysUntilSunday + 1, 0, 0, 0);
+    const sunday = vienna.day + (7 - vienna.weekday) % 7;
+    const compoStart = viennaWallToInstant(vienna.year, vienna.month, sunday, COMPO_START.hour, COMPO_START.minute, 0);
+    const compoEnd = viennaWallToInstant(vienna.year, vienna.month, sunday, COMPO_END.hour, COMPO_END.minute, 0);
+    // the party may run until midnight; after that, the compo counts as "previous"
+    const compoMidnight = viennaWallToInstant(vienna.year, vienna.month, sunday + 1, 0, 0, 0);
+    const compoId = getCompoIdAt(compoStart);
+
+    // Every message has the same shape: a timer/status line, the one compo link, a blank line, the stream link.
+    // The compo page may not exist yet for an upcoming compo, but it is always linked. There is no "previous" compo.
+    let statusLine, compoLine;
 
     if (now >= compoStart && now < compoEnd)
     {
-        // 2HTS in progress
-        const secondsUntilCompoEnd = Math.floor((compoEnd - now) / 1000);
-        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Time left to compose: ${secToStr(secondsUntilCompoEnd)}
-
-${handleLinks()}`);
+        // compo running
+        statusLine = `Submissions close at ${discordTime(compoEnd, "t")} (${discordTime(compoEnd, "R")})`;
+        // static countdown, kept in case it is brought back:
+        // statusLine += `\nTime left to compose: ${secToStr(Math.floor((compoEnd - now) / 1000))}`;
+        compoLine = `**2HTS${compoId}** in progress: ${compoUrl(compoId)}`;
     }
     else if (now >= compoEnd && now < compoMidnight)
     {
-        // 2HTS party started
-        embed.setDescription(`**2HTS${_2htsCompoId}** in progress. Tune in to our listening party, and we hope to see you again next sunday!
-
-${handleLinks()}`);
+        // listening party, until midnight
+        statusLine = "Tune in to our listening party, and we hope to see you again next Sunday!";
+        compoLine = `**2HTS${compoId}** in progress: ${compoUrl(compoId)}`;
     }
     else
     {
-        // Time until next 2HTS start
-        const secondsUntil2HTS = Math.floor((compoStart - now) / 1000);
-        // The label names the compo being counted down to; the links below keep pointing at the compo just held.
-        const upcomingCompoId = getCompoIdAt(compoStart);
-        embed.setDescription(`Time until **2HTS${upcomingCompoId}**: ${secToStr(secondsUntil2HTS)}
-
-${handleLinks()}`);
+        // upcoming compo
+        statusLine = `Starts ${discordTime(compoStart, "F")} (${discordTime(compoStart, "R")})`;
+        // static countdown, kept in case it is brought back:
+        // statusLine += `\nCountdown: ${secToStr(Math.floor((compoStart - now) / 1000))}`;
+        compoLine = `**2HTS${compoId}** upload page: ${compoUrl(compoId)}`;
     }
 
+    embed.setDescription(`${statusLine}\n${compoLine}\n\nLink to Chorus: ${partylink}`);
     return embed;
 }
 
@@ -152,4 +160,7 @@ module.exports = {
         const embed = handle2HTSTime();
         await interaction.reply({ embeds: [embed] });
     },
+
+    // exported for testing
+    buildEmbed: handle2HTSTime,
 };
