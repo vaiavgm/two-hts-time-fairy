@@ -18,3 +18,15 @@ Registering slash commands (run from a machine that has the `.env`):
     node deploy-commands.js prod --clear-global   # also remove leftover global commands (duplicates)
 
 The target is always given explicitly; the TESTING setting in `.env` only affects which bot `app/bot.js` runs as.
+
+## AI track comments
+
+When a "Now Playing: Track by Author [m:ss]" message is posted, the bot can add one short comment at a random point between 40% and 85% of the track (a new "Now Playing" in the same channel cancels the pending one). The 3:30 length warning is separate and always fixed text.
+
+Configure it in `.env` (see `.env.example`):
+
+- `AI_ENABLED=true` turns it on. `AI_PROVIDER` is the main provider (`anthropic`, `openai` or `gemini`), `AI_FALLBACK` an ordered, comma-separated list tried if it fails.
+- Each provider has `*_API_KEY`, optional `*_MODEL` and optional `*_BASE_URL` (the OpenAI one also works with OpenAI-compatible servers such as Ollama or OpenRouter).
+- `app/ai/prompts.txt`: one prompt per line, `{track}` and `{author}` are filled in. Edit freely, no restart needed.
+- `app/ai/fallback.txt`: generic compliments, one picked at random when no provider works. Same placeholders.
+- Try a provider without Discord: `node scripts/ai-test.js "Track" "Author" openai`

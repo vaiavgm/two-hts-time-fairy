@@ -37,6 +37,7 @@ const fs = require("fs");
 // Native v14 Import structure
 const { Client, GatewayIntentBits, ActivityType, Events, DiscordjsErrorCodes, MessageFlags } = require("discord.js");
 const { isTrackReporter } = require("./system/auth");
+const { scheduleComment, logStartup } = require("./ai");
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
@@ -116,6 +117,7 @@ client.once(Events.ClientReady, () =>
             client.user.setActivity("/time", { type: ActivityType.Watching }); 
         }
         console.log("[INFO] Bot is ready! Hello :)");
+        logStartup();
         console.log(`[INFO] Installed in ${client.guilds.cache.size} server(s): ${client.guilds.cache.map(g => `${g.name} (${g.id})`).join(", ") || "none"}`);
     } catch (err) {
         console.error("Error inside ready event listener:", err);
@@ -235,6 +237,8 @@ client.on(Events.MessageCreate, function(message)
         }
 
         console.log(`Now Playing: **${trackName}** by **${authorName}**!`);
+
+        scheduleComment(message, trackName, authorName, trackDurationInSecs);
     } catch (err) {
         console.error("Error parsing messageCreate event safely:", err);
     }

@@ -1,0 +1,10 @@
+Write a brief, kind and motivational sentence about the music piece named "{track}" by {author}.
+Tell {author} in a brief sentence that you are enjoying their song "{track}" so far!
+Write a brief compliment to {author} on the arrangement of their song "{track}".
+Thank {author} for their submission of the track "{track}" and express nice thoughts about it. Be concise.
+Express surprise over how a musical section of the song "{track}" by {author} developed. Be concise.
+Craft a positive and encouraging message about "{track}" by {author} that highlights its emotional impact. Be concise.
+Write a brief note expressing your enjoyment of "{track}" by {author} and how it's resonating with you. Be concise.
+Write a brief compliment to {author} on their skillful arrangement of "{track}" and its ability to captivate listeners.
+Show appreciation to {author} for submitting "{track}" and share your thoughts on what makes it special. Use a single sentence.
+Express your surprise at the unexpected musical developments in "{track}" by {author} and how they enhance the listening experience. Be concise.
