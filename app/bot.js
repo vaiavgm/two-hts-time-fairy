@@ -38,12 +38,13 @@ const fs = require("fs");
 const { Client, GatewayIntentBits, ActivityType, Events, DiscordjsErrorCodes, MessageFlags } = require("discord.js");
 const { isTrackReporter } = require("./system/auth");
 const { scheduleComment, logStartup } = require("./ai");
-const client = new Client({ 
+const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent // Critical for message text reading in v14
-    ] 
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        // Critical for message text reading in v14
+        GatewayIntentBits.MessageContent,
+    ],
 });
 
 require("dotenv").config();
@@ -74,8 +75,10 @@ const token = temp_token;
 client.commands = new Map();
 const commandsPath = path.join(__dirname, "modules");
 
-try {
-    if (fs.existsSync(commandsPath)) {
+try
+{
+    if (fs.existsSync(commandsPath))
+    {
         const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
 
         for (const file of commandFiles)
@@ -102,24 +105,32 @@ try {
                 console.error(`[ERROR] Failed to load command module ${file}, skipping it:`, moduleError);
             }
         }
-    } else {
+    }
+    else
+    {
         console.log(`[WARNING] Modules directory not found at ${commandsPath}`);
     }
-} catch (error) {
+}
+catch (error)
+{
     console.error("[CRITICAL] Failed to load command modules:", error);
 }
 
 // Fixed: Swapped once("ready") to once(Events.ClientReady) to eliminate the deprecation warning
 client.once(Events.ClientReady, () =>
 {
-    try {
-        if (client.user) {
-            client.user.setActivity("/time", { type: ActivityType.Watching }); 
+    try
+    {
+        if (client.user)
+        {
+            client.user.setActivity("/time", { type: ActivityType.Watching });
         }
         console.log("[INFO] Bot is ready! Hello :)");
         logStartup();
         console.log(`[INFO] Installed in ${client.guilds.cache.size} server(s): ${client.guilds.cache.map(g => `${g.name} (${g.id})`).join(", ") || "none"}`);
-    } catch (err) {
+    }
+    catch (err)
+    {
         console.error("Error inside ready event listener:", err);
     }
 });
@@ -144,15 +155,16 @@ client.on(Events.InteractionCreate, async interaction =>
         catch (error)
         {
             console.error(`Error handling button ${interaction.customId}:`, error);
-            interaction.reply({ content: "Something went wrong with that button.", flags: MessageFlags.Ephemeral }).catch(() => {});
+            interaction.reply({ content: "Something went wrong with that button.", flags: MessageFlags.Ephemeral }).catch(() => null);
         }
         return;
     }
 
     if (!interaction.isChatInputCommand()) return;
 
-    try {
-        const user = interaction.user; 
+    try
+    {
+        const user = interaction.user;
         const command = interaction.client.commands.get(interaction.commandName);
 
         if (!command)
@@ -162,17 +174,25 @@ client.on(Events.InteractionCreate, async interaction =>
         }
 
         await command.execute(interaction, user, client.commands);
-    } catch (error) {
+    }
+    catch (error)
+    {
         console.error(`Error executing command ${interaction.commandName}:`, error);
-        
-        const replyPayload = { content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral };
-        try {
-            if (interaction.replied || interaction.deferred) {
+
+        const replyPayload = { content: "There was an error while executing this command!", flags: MessageFlags.Ephemeral };
+        try
+        {
+            if (interaction.replied || interaction.deferred)
+            {
                 await interaction.followUp(replyPayload);
-            } else {
+            }
+            else
+            {
                 await interaction.reply(replyPayload);
             }
-        } catch (msgError) {
+        }
+        catch (msgError)
+        {
             console.error("Failed to send error reply back to Discord channel:", msgError);
         }
     }
@@ -183,14 +203,15 @@ client.on(Events.InteractionCreate, async interaction =>
 // ==========================================
 client.on(Events.MessageCreate, function(message)
 {
-    try {
+    try
+    {
         if (!message || !message.author || message.author.bot) return;
 
         if (!isTrackReporter(message.author)) return;
 
         let parsedMessage = message.content;
         if (!parsedMessage) return;
-        
+
         parsedMessage = parsedMessage.replace(/\*/g, "");
 
         if (!parsedMessage.toLowerCase().startsWith("now playing: ")) return;
@@ -200,12 +221,12 @@ client.on(Events.MessageCreate, function(message)
 
         const splitOpen = parsedMessage.split("[");
         if (splitOpen.length < 2) return;
-        
+
         const splitClose = splitOpen[1].split("]");
         const trackDurationString = splitClose[0];
-        
+
         if (!trackDurationString.includes(":")) return;
-        
+
         const trackMins = parseInt(trackDurationString.split(":")[0]);
         const trackSecs = parseInt(trackDurationString.split(":")[1]);
         const trackDurationInSecs = trackMins * 60 + trackSecs;
@@ -214,7 +235,7 @@ client.on(Events.MessageCreate, function(message)
 
         const trackAndAuthor = splitOpen[0].split(/ by /g);
         if (trackAndAuthor.length < 2) return;
-        
+
         const authorName = trackAndAuthor.pop().trim();
         const trackName = trackAndAuthor.join(" by ").trim();
 
@@ -227,10 +248,13 @@ client.on(Events.MessageCreate, function(message)
 
             setTimeout(() =>
             {
-                try {
+                try
+                {
                     message.channel.send(`Hi **${authorName}**, please kindly respect the 3 minutes 30 seconds guideline. As it is customary, ${secsExceeded} seconds were deducted from your remaining lifetime.`)
                         .catch(err => console.error("Error sending guideline warning message:", err));
-                } catch (timeoutErr) {
+                }
+                catch (timeoutErr)
+                {
                     console.error("Error within message submission timeout scope:", timeoutErr);
                 }
             }, 1000);
@@ -239,7 +263,9 @@ client.on(Events.MessageCreate, function(message)
         console.log(`Now Playing: **${trackName}** by **${authorName}**!`);
 
         scheduleComment(message, trackName, authorName, trackDurationInSecs);
-    } catch (err) {
+    }
+    catch (err)
+    {
         console.error("Error parsing messageCreate event safely:", err);
     }
 });
@@ -247,7 +273,8 @@ client.on(Events.MessageCreate, function(message)
 // ==========================================
 // 6. DISCORD NETWORK CONNECTION LISTENERS
 // ==========================================
-client.on(Events.Error, (error) => {
+client.on(Events.Error, (error) =>
+{
     console.error("Discord client encountered a network connectivity error:", error);
 });
 

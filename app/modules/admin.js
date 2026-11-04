@@ -45,28 +45,28 @@ module.exports = {
 
         switch (cmd)
         {
-        case "reset":
-        case "start":
-        {
-            const target = commands.get(app);
-            if (!target || typeof target[cmd] !== "function")
+            case "reset":
+            case "start":
             {
-                result = `The app **${app}** does not support the "${cmd}" command.`;
+                const target = commands.get(app);
+                if (!target || typeof target[cmd] !== "function")
+                {
+                    result = `The app **${app}** does not support the "${cmd}" command.`;
+                    break;
+                }
+                result = await target[cmd]();
                 break;
             }
-            result = await target[cmd]();
-            break;
-        }
-        case "activate":
+            case "activate":
             // break, if "confirm" has not been written
-            if (!confirm) break;
-            result = await slash_functions.addCommandsToGuild(interaction, app);
-            break;
-        case "deactivate":
+                if (!confirm) break;
+                result = await slash_functions.addCommandsToGuild(interaction, app);
+                break;
+            case "deactivate":
             // break, if "confirm" has not been written
-            if (!confirm) break;
-            result = await slash_functions.removeCommandsFromGuild(interaction, app);
-            break;
+                if (!confirm) break;
+                result = await slash_functions.removeCommandsFromGuild(interaction, app);
+                break;
         }
 
         await interaction.reply({ content: result });

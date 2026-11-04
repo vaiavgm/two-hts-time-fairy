@@ -11,10 +11,14 @@ async function createRandomizedImage(canvas)
     // Loop through each pixel in the ImageData and randomize its color
     for (let i = 0; i < imageData.data.length; i += 4)
     {
-        imageData.data[i] = Math.floor(Math.random() * 256);   // red component
-        imageData.data[i + 1] = Math.floor(Math.random() * 256); // green component
-        imageData.data[i + 2] = Math.floor(Math.random() * 256); // blue component
-        imageData.data[i + 3] = 255; // alpha component
+        // red component
+        imageData.data[i] = Math.floor(Math.random() * 256);
+        // green component
+        imageData.data[i + 1] = Math.floor(Math.random() * 256);
+        // blue component
+        imageData.data[i + 2] = Math.floor(Math.random() * 256);
+        // alpha component
+        imageData.data[i + 3] = 255;
     }
 
     // Put the modified ImageData back onto the canvas
