@@ -4,7 +4,8 @@
   "description": "A Discord bot for the 2HTS community",
   "main": "app/bot.js",
   "scripts": {
-    "start": "node app/bot.js"
+    "start": "node app/bot.js",
+    "lint": "eslint ."
   },
   "keywords": [
     "2hts"
@@ -18,7 +19,10 @@
     "gif-encoder-2": "1.0.5"
   },
   "devDependencies": {
-    "eslint": "^7.32.0"
+    "@eslint/js": "^9.39.5",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0"
   },
   "engines": {
     "node": ">=18.0.0",
