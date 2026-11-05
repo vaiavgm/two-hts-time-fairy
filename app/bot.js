@@ -8,10 +8,46 @@
 // ==========================================
 // A stray error (e.g. one failed command) must not take the whole bot down: log it and keep running.
 // Only a burst of errors in a short time suggests the bot is stuck in a broken state, so only then
-// exit and let the host restart it.
+// exit and let the host restart it (turn on automatic restarts after a crash in the host's panel).
 const ERROR_BURST_LIMIT = 10;
 const ERROR_BURST_WINDOW_MS = 60 * 1000;
 let recentErrorTimes = [];
+
+// Every start opens a new Discord gateway session and Discord limits how many a bot may open per day. So a
+// fatal exit waits first: a host that restarts the bot at once can then not loop through hundreds of sessions.
+const RESTART_DELAY_MS = 15 * 1000;
+// Closing the Discord connection should take a moment; never hang on it when asked to stop
+const SHUTDOWN_TIMEOUT_MS = 5 * 1000;
+let exitScheduled = false;
+let shuttingDown = false;
+
+// Closes the Discord connection and exits
+async function shutdown(exitCode)
+{
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    const forceExit = setTimeout(() => process.exit(exitCode), SHUTDOWN_TIMEOUT_MS);
+    try
+    {
+        await client.destroy();
+    }
+    catch (error)
+    {
+        console.error("[WARN] Error while closing the Discord connection:", error);
+    }
+    clearTimeout(forceExit);
+    process.exit(exitCode);
+}
+
+// The bot stays up and keeps answering during the delay
+function exitAfterDelay(reason)
+{
+    if (exitScheduled) return;
+    exitScheduled = true;
+    console.error(`[FATAL] ${reason} Exiting in ${RESTART_DELAY_MS / 1000}s so the host can restart the bot.`);
+    setTimeout(() => shutdown(1), RESTART_DELAY_MS);
+}
 
 function noteUnexpectedError(kind, error)
 {
@@ -23,8 +59,7 @@ function noteUnexpectedError(kind, error)
 
     if (recentErrorTimes.length >= ERROR_BURST_LIMIT)
     {
-        console.error(`[FATAL] ${ERROR_BURST_LIMIT} unexpected errors within ${ERROR_BURST_WINDOW_MS / 1000}s, exiting so the host can restart the bot.`);
-        process.exit(1);
+        exitAfterDelay(`${ERROR_BURST_LIMIT} unexpected errors within ${ERROR_BURST_WINDOW_MS / 1000}s.`);
     }
 }
 
@@ -288,11 +323,18 @@ client.on(Events.ShardResume, (shardId) => console.log(`[INFO] Shard ${shardId} 
 client.on(Events.ShardError, (error, shardId) => console.error(`[WARN] Shard ${shardId} error:`, error));
 
 // The session can no longer be recovered by discord.js, so a fresh start is the only way back.
-client.on(Events.Invalidated, () =>
+client.on(Events.Invalidated, () => exitAfterDelay("Discord session was invalidated."));
+
+// A stop or restart from the host's panel (SIGTERM) or Ctrl+C (SIGINT): leave cleanly. A second signal exits at once.
+for (const signal of ["SIGTERM", "SIGINT"])
 {
-    console.error("[FATAL] Discord session was invalidated, exiting so the host can restart the bot.");
-    process.exit(1);
-});
+    process.on(signal, () =>
+    {
+        if (shuttingDown) process.exit(1);
+        console.log(`[INFO] ${signal} received, shutting down.`);
+        shutdown(0);
+    });
+}
 
 // ==========================================
 // 7. LOGIN
@@ -314,8 +356,9 @@ async function connect()
         {
             if (UNRECOVERABLE_LOGIN_ERRORS.includes(err.code))
             {
-                console.error("[FATAL] Discord login cannot succeed with the current configuration (check the token and the enabled intents):", err);
-                process.exit(1);
+                console.error("Discord login failed:", err);
+                exitAfterDelay("Discord login cannot succeed with the current configuration (check the token and the enabled intents).");
+                return;
             }
 
             // e.g. a temporary network or Discord outage at startup: keep trying instead of staying offline

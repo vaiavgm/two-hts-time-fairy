@@ -19,6 +19,12 @@ Registering slash commands (run from a machine that has the `.env`):
 
 The target is always given explicitly; the TESTING setting in `.env` only affects which bot `app/bot.js` runs as.
 
+## Running and stopping
+
+Start the bot with `npm start` (`node app/bot.js`). A single failing command or event only logs an error. If 10 unexpected errors happen within a minute, a fatal login problem occurs, or Discord invalidates the session, the bot waits 15 seconds and then exits with code 1; the 15 seconds keep a host that restarts it immediately from burning through Discord's daily limit of new gateway sessions. Turn on the automatic restart after a crash in the host's panel, otherwise the bot stays offline after such an exit.
+
+A stop or restart from the panel (SIGTERM) or Ctrl+C closes the Discord connection and exits with code 0; a second signal exits at once.
+
 ## AI track comments
 
 When a "Now Playing: Track by Author [m:ss]" message is posted, the bot can add one short comment at a random point between 40% and 85% of the track (a new "Now Playing" in the same channel cancels the pending one). The 3:30 length warning is separate and always fixed text.

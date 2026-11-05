@@ -40,7 +40,7 @@ function fakeGuild(id, registeredNames)
         current: registeredNames.slice(),
         setCalls: 0,
         commands: {
-            fetch: async () => new Map(guild.current.map(name => [name, { name }])),
+            fetch: async () => new Map(guild.current.map(name => [name, { name, equals: () => false }])),
             set: async data =>
             {
                 guild.setCalls++;
@@ -48,6 +48,21 @@ function fakeGuild(id, registeredNames)
             },
         },
     };
+    return guild;
+}
+
+// A server whose registered commands are exactly the current definitions of these modules (as Discord returns them)
+function upToDateGuild(id, moduleNames, changeDescriptionOf)
+{
+    const guild = fakeGuild(id, []);
+    const commands = moduleNames.map(name =>
+    {
+        const definition = require("../app/modules/" + name).data.toJSON();
+        const stored = changeDescriptionOf === name ? { ...definition, description: "old description" } : definition;
+        return { name: definition.name, equals: candidate => JSON.stringify(candidate) === JSON.stringify(stored) };
+    });
+    guild.current = commands.map(c => c.name);
+    guild.commands.fetch = async () => new Map(commands.map(c => [c.name, c]));
     return guild;
 }
 
@@ -75,6 +90,20 @@ test("startup sync leaves servers without any of the bot's commands alone", asyn
     const guild = fakeGuild("g3", []);
     await registry.syncOnStartup(guild);
     assert.strictEqual(guild.setCalls, 0);
+});
+
+test("startup sync does not call Discord when the server already matches", async () =>
+{
+    const guild = upToDateGuild("g12", ["admin", "time"]);
+    await registry.syncOnStartup(guild);
+    assert.strictEqual(guild.setCalls, 0);
+});
+
+test("startup sync updates a command whose definition changed", async () =>
+{
+    const guild = upToDateGuild("g13", ["admin", "time"], "time");
+    await registry.syncOnStartup(guild);
+    assert.strictEqual(guild.setCalls, 1);
 });
 
 test("permanent commands can be added and removed", async () =>

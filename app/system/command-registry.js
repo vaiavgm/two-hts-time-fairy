@@ -8,7 +8,8 @@
 //   re-read from it at startup.
 // - Game modules (see GAME_APPS in game-admin.js) have their command only while a round runs: the game calls
 //   setTemporary.
-// Changed definitions of existing commands (descriptions, options) are pushed at every startup as well.
+// At startup, changed definitions of existing commands (descriptions, options) are pushed too; if a server
+// already matches, Discord is not called at all (so a restart loop does not hammer the API).
 
 const fs = require("fs");
 const path = require("path");
@@ -153,16 +154,30 @@ function desiredModules(guildId)
     return new Set([...ALWAYS_ON, ...setOf(permanent, guildId), ...setOf(temporary, guildId)]);
 }
 
-async function applyToDiscord(guild)
+// True if the server already has exactly these commands with these definitions
+function isUpToDate(current, data)
+{
+    if (!current || current.size !== data.length) return false;
+    const existing = [...current.values()];
+    return data.every(definition =>
+    {
+        const registered = existing.find(command => command.name === definition.name);
+        return Boolean(registered) && registered.equals(definition, true);
+    });
+}
+
+// `current` (the commands the server has, if just fetched) lets the call be skipped when nothing changed
+async function applyToDiscord(guild, current)
 {
     const data = [...desiredModules(guild.id)].map(moduleData).filter(Boolean).map(d => d.toJSON());
+    if (isUpToDate(current, data)) return;
     await guild.commands.set(data);
 }
 
-function sync(guild)
+function sync(guild, current)
 {
     const previous = queues.get(guild.id) || Promise.resolve();
-    const next = previous.catch(() => null).then(() => applyToDiscord(guild));
+    const next = previous.catch(() => null).then(() => applyToDiscord(guild, current));
     queues.set(guild.id, next);
     return next;
 }
@@ -225,7 +240,7 @@ async function syncOnStartup(guild)
     {
         if (!switchedOff.has(name)) set.add(name);
     }
-    await sync(guild);
+    await sync(guild, registered);
 }
 
 async function syncAllOnStartup(client)
