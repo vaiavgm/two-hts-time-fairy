@@ -99,7 +99,7 @@ function tarot(user)
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
-    data: new SlashCommandBuilder().setName("tarot").setDescription("shows your past, present, or future"),
+    data: new SlashCommandBuilder().setName("tarot").setDescription("Shows a tarot reading about your past, present or future (only you can see it)"),
 
     async execute(interaction, user)
     {

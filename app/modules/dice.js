@@ -4,11 +4,11 @@ module.exports = {
     data: new SlashCommandBuilder().setName("roll").setDescription("Roll some virtual dice!")
         .addStringOption(option =>
             option.setName("dicetype")
-                .setDescription("e.g. '2d12' for 2 12-sided dice.")
+                .setDescription("The dice, e.g. 2d6 or d20 (at most 100 dice with 2 to 100 sides)")
                 .setRequired(true))
         .addStringOption(option =>
             option.setName("advantage")
-                .setDescription("only the highest/lowest roll counts").setRequired(false)
+                .setDescription("Optional: only the highest (advantage) or lowest (disadvantage) roll counts").setRequired(false)
                 .addChoices({ name: "advantage", value: "advantage" }, { name: "disadvantage", value: "disadvantage" })),
 
     async execute(interaction)

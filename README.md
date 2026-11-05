@@ -48,7 +48,7 @@ Everything players see is ephemeral (no DMs). One round per channel and game, ke
 
 Players:
 
-- `/gendom3 join word:<word>` or `/gendom4 join who:<…> does-what:<…> where:<…> when:<…>` joins the round (the bot announces the join, the entry stays secret). Joining again before the themes are out changes your entry. An entry with a blank part (or one without any letter or digit) is rejected with a private message naming the part and giving examples.
+- `/gendom3 join word:<word>` or `/gendom4 join who:<…> does-what:<…> where:<…> when:<…>` joins the round (the bot announces the join, the entry stays secret). Joining again before the themes are out changes your entry. There is deliberately no way to leave a round: `join` is the only command, everybody is removed when the round is closed, and anybody who does not want to play can simply ignore their theme. An entry with a blank part (or one without any letter or digit) is rejected with a private message naming the part and giving examples.
 - `/gendom3 theme` / `/gendom4 theme` shows your theme again, privately.
 
 Hosts, via `/admin gendom3 <action>` or `/admin gendom4 <action>`:
@@ -57,6 +57,7 @@ Hosts, via `/admin gendom3 <action>` or `/admin gendom4 <action>`:
 - `distribute` hands out the themes (at least 2 players). The private replies go out in batches of 5 with a pause of a second between them, so a big round takes a little while and does not run into Discord's rate limits. Players whose join message is younger than 14 minutes get an ephemeral reply to it; everybody else is mentioned once and uses `theme`. The players are put in a random order and each part is taken from the player a random number of places further on, a different number per part, so nobody gets their own words and every word is used exactly once. In Gendom 4 the four parts come from four different players when there are at least 5 players; with fewer, the count wraps around and one player may provide two parts, but never both **who** and **does what** (that would just be the start of their original sentence) unless there are only 2 players. Identical text from two players is avoided where possible.
 - Players joining after `distribute` get a theme immediately: their words are added to a pool of all words, and they draw from it (never their own words, from different players where possible). Drawn words are removed from the pool, so the next latecomer does not get the same ones; since every latecomer adds as many words as they take, the pool never runs out.
 - `list` posts everybody's theme publicly (without pinging). With `sources:True`, the names of the players whose words make up each theme follow it, in order: `@player: The telephone eats pizza on the moon after school. (Anna, Ben, Cleo, Dan)`.
+- `kick user:<player>` removes a player's entry before `distribute` (for example something offensive); the player can join again. Afterwards nobody can be removed, because their words are part of other players' themes. Nothing is pinged.
 - `close` ends the round, stops further joins and frees its memory.
 
 Who may use these: bot admins (`app/system/auth.js`), members with the `@moderator` role and server Administrators (rules in `app/system/game-admin.js`). To add another game, add its module name to `GAME_APPS` there and export `start`/`distribute`/`list`/`close` functions from the module (a Gendom-style game gets them all from `createGame` in `app/system/gendom.js`, see `app/modules/gendom4.js`).
@@ -69,12 +70,12 @@ Who may use these: bot admins (`app/system/auth.js`), members with the `@moderat
 
 - `/admin` is always there.
 - Default modules (a module exporting `defaultEnabled: true`, currently `time`) are added to every managed server at startup, so a bot update that introduces one shows up without any manual step. If an admin switches one off on a server (`/admin slash deactivate`), that is remembered in `command-opt-outs.json` and it stays off until it is activated again.
-- Other permanent modules are the ones switched on with `/admin slash activate`; Discord remembers them and the bot re-reads them at startup.
+- Other permanent modules are the ones switched on with `/admin slash activate`; Discord remembers them and the bot re-reads them at startup. `/reactionrole` is such a module (it is marked `defaultEnabled: false`): it never appears on a server by itself, only after `/admin slash activate module:reactionrole`, and `deactivate` removes it again.
 - Game commands exist only while a round runs: `/admin gendom3 start` adds `/gendom3` to the server (likewise for `gendom4`), and `close` removes it again once the last round of that server is over (rounds are per channel, the command is per server).
 - At every startup the bot syncs each server that already has commands from it: permanent and default commands are kept or added, changed definitions (descriptions, options) are updated (Discord is not called at all if a server already matches), game commands (no round survives a restart) and unknown leftovers are removed. A server is left alone if an unknown command could belong to a module that failed to load.
 
 The opt-out file is written to `DATA_DIR` (default `./data`, see `.env.example`), which must survive restarts. If it is lost, the only effect is that default commands switched off by an admin come back at the next startup.
 
-`deploy-commands.js` still registers `/admin` and `/time` from `config.json`. `/admin` changed (subcommands, the `gendom3`/`gendom4` groups with `list sources` and `start minutes`), so re-register it with `node deploy-commands.js prod` (or `test`).
+`deploy-commands.js` still registers `/admin` and `/time` from `config.json`. `/admin` changed (subcommands, the `gendom3`/`gendom4` groups with `list sources`, `start minutes` and `kick user`; it is now limited to servers), so re-register it with `node deploy-commands.js prod` (or `test`).
 
 Tests for the game logic: `npm test`.

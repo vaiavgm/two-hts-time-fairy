@@ -341,3 +341,54 @@ test("the round works when the bot cannot post in the channel", async () =>
         console.error = original;
     }
 });
+
+function kickInteraction(guild, userId)
+{
+    return {
+        channelId: "c1",
+        guildId: guild.id,
+        guild,
+        options: { getUser: name => (name === "user" && userId ? { id: userId } : null) },
+    };
+}
+
+test("kick removes an entry before the themes are handed out, and the player can join again",
+    withSettings({ dashboardDelayMs: 5, batchDelayMs: 1 }, async () =>
+    {
+        const guild = fakeGuild("g12");
+        const channel = fakeChannel();
+        await gendom3.start(hostInteraction(guild, channel));
+        await gendom3.execute(joinInteraction(guild, "1", "Anna", ["dank"]));
+        await gendom3.execute(joinInteraction(guild, "2", "Troll", ["rude"]));
+        await gendom3.execute(joinInteraction(guild, "3", "Cleo", ["wet"]));
+
+        const nobody = await gendom3.kick(kickInteraction(guild, "99"));
+        assert.match(nobody.content, /<@99> has not joined this round/);
+        assert.deepStrictEqual(nobody.allowedMentions, { parse: [] }, "never pings");
+
+        const kicked = await gendom3.kick(kickInteraction(guild, "2"));
+        assert.match(kicked.content, /Removed <@2> from the Gendom 3 round \(2 players left\)/);
+        assert.deepStrictEqual(kicked.allowedMentions, { parse: [] });
+        await sleep(30);
+        assert.match(channel.sent[0].content, /2 players joined/);
+        assert.doesNotMatch(channel.sent[0].content, /Troll/);
+
+        const rejoin = joinInteraction(guild, "2", "Troll", ["polite"]);
+        await gendom3.execute(rejoin);
+        assert.match(rejoin.replies[0].content, /You joined with the word `polite`/);
+
+        await gendom3.distribute(hostInteraction(guild, null));
+        const late = await gendom3.kick(kickInteraction(guild, "1"));
+        assert.match(late, /already handed out/);
+        await gendom3.close(hostInteraction(guild, null));
+        assert.match(await gendom3.kick(kickInteraction(guild, "1")), /No Gendom 3 round is running/);
+    }));
+
+test("the join command is the only way in: no leave command, four numbered parts for Gendom 4", () =>
+{
+    assert.deepStrictEqual(gendom3.data.toJSON().options.map(o => o.name), ["join", "theme"]);
+    const four = gendom4.data.toJSON().options.map(o => o.name);
+    assert.deepStrictEqual(four, ["join", "theme"]);
+    const join = gendom4.data.toJSON().options.find(o => o.name === "join");
+    join.options.forEach((option, i) => assert.ok(option.description.startsWith(`(${i + 1}/4) `), option.description));
+});

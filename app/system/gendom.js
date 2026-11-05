@@ -3,7 +3,7 @@
 //
 // Players:  /<game> join <slot options>   (join, or change your entry before the themes are handed out)
 //           /<game> theme                 (show your theme again, privately)
-// Hosts:    /admin <game> start [minutes] | distribute | list [sources] | close   (see game-admin.js)
+// Hosts:    /admin <game> start [minutes] | distribute | list [sources] | kick <user> | close   (see game-admin.js)
 //
 // All replies to players are ephemeral (no DMs). One round per channel and game, kept in memory only:
 // a bot restart ends every round.
@@ -623,6 +623,27 @@ function createGame(config)
         return chunks.map(content => ({ content, allowedMentions: { parse: [] } }));
     }
 
+    // Removes a player's entry (e.g. something offensive) before the themes are handed out. Afterwards a player's
+    // words are part of other players' themes, so nobody can be removed any more. The player may join again.
+    async function kick(interaction)
+    {
+        const round = rounds.get(interaction.channelId);
+        if (!round) return `No ${title} round is running in this channel.`;
+
+        const user = interaction.options.getUser("user");
+        const player = user && round.players.get(user.id);
+        const quiet = content => ({ content, allowedMentions: { parse: [] } });
+        if (!player) return quiet(`${user ? userMention(user.id) : "That user"} has not joined this round.`);
+        if (round.distributed)
+        {
+            return "The themes are already handed out, and this player's words are part of other players' themes.";
+        }
+
+        round.players.delete(user.id);
+        refreshDashboard(round);
+        return quiet(`Removed ${userMention(user.id)} from the ${title} round (${plural(round.players.size, "player")} left).`);
+    }
+
     async function close(interaction)
     {
         const round = rounds.get(interaction.channelId);
@@ -687,6 +708,7 @@ function createGame(config)
         start,
         distribute,
         list,
+        kick,
         close,
     };
 }

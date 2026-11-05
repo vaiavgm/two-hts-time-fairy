@@ -233,3 +233,20 @@ test("startup sync leaves a server alone when unknown commands might belong to a
     assert.strictEqual(guild.setCalls, 0);
     assert.deepStrictEqual(sorted(guild.current), ["admin", "randomgif", "time"]);
 });
+
+test("/reactionrole is never added on its own, only by an explicit /admin slash activate", async () =>
+{
+    const reactionrole = require("../app/modules/reactionrole");
+    assert.strictEqual(reactionrole.defaultEnabled, false);
+
+    const guild = fakeGuild("g20", ["admin", "time"]);
+    await registry.syncOnStartup(guild);
+    await registry.syncOnStartup(guild);
+    assert.ok(!guild.current.includes("reactionrole"), "not added by the startup sync");
+
+    await registry.setPermanent(guild, "reactionrole", true);
+    assert.ok(guild.current.includes("reactionrole"), "added by the admin");
+
+    await registry.setPermanent(guild, "reactionrole", false);
+    assert.ok(!guild.current.includes("reactionrole"), "removed again by the admin");
+});

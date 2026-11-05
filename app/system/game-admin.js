@@ -10,16 +10,21 @@ const GAME_APPS = ["gendom3", "gendom4"];
 const GAME_ACTIONS = [
     {
         name: "start",
-        description: "Open a round in this channel",
-        integerOptions: [{ name: "minutes", description: "Time limit in minutes (1-60, other values are clamped). Unset: no limit" }],
+        description: "Open a round in this channel, optionally with a time limit",
+        integerOptions: [{ name: "minutes", description: "Time limit in minutes (1-60, other values are clamped). Empty: no limit" }],
     },
-    { name: "distribute", description: "Hand out the themes to everybody who joined" },
+    { name: "distribute", description: "Hand out the themes now to everybody who joined" },
     {
         name: "list",
-        description: "Post everybody's theme publicly",
+        description: "Post everybody's theme publicly (without pinging them)",
         booleanOptions: [{ name: "sources", description: "Also name the players whose words make up each theme" }],
     },
-    { name: "close", description: "End the round in this channel and free its memory" },
+    {
+        name: "kick",
+        description: "Remove a player's entry before the themes are handed out",
+        userOptions: [{ name: "user", description: "The player to remove", required: true }],
+    },
+    { name: "close", description: "End the round in this channel (the themes are gone afterwards)" },
 ];
 
 function isGameApp(name)

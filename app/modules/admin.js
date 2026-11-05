@@ -1,4 +1,4 @@
-const { MessageFlags, SlashCommandBuilder } = require("discord.js");
+const { InteractionContextType, MessageFlags, SlashCommandBuilder } = require("discord.js");
 const { isAdmin } = require("../system/auth");
 const { GAME_APPS, GAME_ACTIONS, isGameApp, mayControlGames, runGameAction } = require("../system/game-admin");
 const slash_functions = require("../system/slash-commands");
@@ -19,9 +19,10 @@ function addSlashSubcommand(group, name, description)
             .setRequired(true)));
 }
 
-const data = new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.");
+const data = new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.")
+    .setContexts(InteractionContextType.Guild);
 
-// /admin <game> start [minutes] | distribute | list [sources] | close
+// /admin <game> start [minutes] | distribute | list [sources] | kick <user> | close
 for (const app of GAME_APPS)
 {
     data.addSubcommandGroup(group =>
@@ -39,6 +40,10 @@ for (const app of GAME_APPS)
                 for (const option of action.integerOptions || [])
                 {
                     sub.addIntegerOption(o => o.setName(option.name).setDescription(option.description));
+                }
+                for (const option of action.userOptions || [])
+                {
+                    sub.addUserOption(o => o.setName(option.name).setDescription(option.description).setRequired(Boolean(option.required)));
                 }
                 return sub;
             });
