@@ -3,10 +3,16 @@
 //
 // Players:  /<game> join <slot options>   (join, or change your entry before the themes are handed out)
 //           /<game> theme                 (show your theme again, privately)
-// Hosts:    /admin <game> start | distribute | list [sources] | close   (see game-admin.js)
+// Hosts:    /admin <game> start [minutes] | distribute | list [sources] | close   (see game-admin.js)
 //
 // All replies to players are ephemeral (no DMs). One round per channel and game, kept in memory only:
 // a bot restart ends every round.
+//
+// `start` also posts a status message in the channel that is edited as players join (who joined, how many).
+// With the optional `minutes` (clamped to 1-60; unset means no time limit) the channel gets a reminder one minute
+// before the time is up and a note when it is up. The timer only announces, it does not close the round.
+// `distribute` sends the private themes in small batches with a pause in between, so a big round does not hit
+// Discord's rate limits.
 //
 // A game module calls createGame(config) and exports the result. config:
 //   name          command name, e.g. "gendom4"
@@ -37,6 +43,19 @@ const FOLLOW_UP_WINDOW_MS = 14 * 60 * 1000;
 const MAX_MESSAGE_LENGTH = 1900;
 const MAX_MENTIONS_PER_MESSAGE = 50;
 const BLANK = "[blank]";
+const MIN_MINUTES = 1;
+const MAX_MINUTES = 60;
+const MAX_DASHBOARD_LENGTH = 1800;
+
+// Timings, in an object so tests can speed them up:
+// batchSize private theme replies are sent at once, with batchDelayMs between two batches;
+// status message edits are merged to at most one per dashboardDelayMs
+const settings = {
+    batchSize: 5,
+    batchDelayMs: 1000,
+    minuteMs: 60 * 1000,
+    dashboardDelayMs: 2000,
+};
 
 function ephemeral(content)
 {
@@ -94,6 +113,27 @@ function displayName(interaction)
     return (member && (member.displayName || member.nick)) || interaction.user.globalName || interaction.user.username;
 }
 
+function sleep(ms)
+{
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// The `minutes` option of `start`, clamped to 1-60; null when it is not set
+function requestedMinutes(interaction)
+{
+    const options = interaction.options;
+    const raw = options && typeof options.getInteger === "function" ? options.getInteger("minutes") : null;
+    if (raw === null || raw === undefined) return null;
+    const minutes = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Math.round(raw)));
+    return { minutes, clamped: minutes !== raw };
+}
+
+async function channelOf(interaction)
+{
+    if (interaction.channel) return interaction.channel;
+    return interaction.client ? interaction.client.channels.fetch(interaction.channelId) : null;
+}
+
 function createGame(config)
 {
     const { name, title, entryNoun, slots } = config;
@@ -105,7 +145,8 @@ function createGame(config)
     const createState = config.createState || (() => ({}));
     const apart = (config.apart || []).map(pair => pair.map(slotName => slots.findIndex(slot => slot.name === slotName)));
 
-    // channelId -> { guildId, distributed, state, pool, players: Map<userId, Player> }
+    // channelId -> { channelId, guildId, distributed, closed, state, pool, players: Map<userId, Player>,
+    //                channel, dashboard, deadline, timeUp, warnTimer, endTimer, dashboardTimer }
     // Player: { userId, name, words, sources, theme, interaction, joinedAt }
     const rounds = new Map();
 
@@ -138,6 +179,129 @@ function createGame(config)
         const preview = words.map(word => (isValidWord(word) ? word : BLANK)).join(" ");
         return `Your ${entryNoun} ${inlineCode(preview)} needs a proper ` +
             invalid.map(slot => `**${slot.label}** (e.g. ${examplesOf(slot)})`).join(" and ") + ".";
+    }
+
+    // ------------------------------------------------------------------
+    // Status message and timer. Both are best effort: if the bot may not post in the channel, the round still works.
+    // ------------------------------------------------------------------
+
+    async function say(round, content)
+    {
+        if (!round.channel) return;
+        try
+        {
+            await round.channel.send({ content, allowedMentions: { parse: [] } });
+        }
+        catch (error)
+        {
+            console.error(`Could not post a ${title} message:`, error);
+        }
+    }
+
+    function dashboardText(round)
+    {
+        const players = [...round.players.values()];
+        let status = "open";
+        if (round.closed) status = "closed";
+        else if (round.distributed) status = "themes handed out";
+
+        const head = [`\u{1F3B2} **${title}** (${status}): ${plural(players.length, "player")} joined`];
+        if (!round.closed && !round.distributed && round.deadline)
+        {
+            head.push(round.timeUp
+                ? "\u231B Time is up, waiting for the host."
+                : `\u23F1\uFE0F Time is up <t:${Math.floor(round.deadline / 1000)}:R>`);
+        }
+
+        const state = round.distributed ? "theme ready" : "joined";
+        const lines = [];
+        let length = head.join("\n").length;
+        for (let i = 0; i < players.length; i++)
+        {
+            const line = `${i + 1}) ${escapeMarkdown(players[i].name)} - ${state}`;
+            if (length + line.length + 1 > MAX_DASHBOARD_LENGTH)
+            {
+                lines.push(`... and ${players.length - i} more`);
+                break;
+            }
+            lines.push(line);
+            length += line.length + 1;
+        }
+        return head.join("\n") + (lines.length > 0 ? "\n\n" + lines.join("\n") : "");
+    }
+
+    async function pushDashboard(round)
+    {
+        if (!round.dashboard) return;
+        try
+        {
+            await round.dashboard.edit({ content: dashboardText(round), allowedMentions: { parse: [] } });
+        }
+        catch (error)
+        {
+            console.error(`Could not update the ${title} status message:`, error);
+        }
+    }
+
+    // Joins can arrive in bursts and Discord limits message edits, so edits are merged: the one scheduled edit
+    // shows whatever the state is by then. `immediate` (used when the round closes) edits right away.
+    function refreshDashboard(round, immediate = false)
+    {
+        if (!round.dashboard) return Promise.resolve();
+        if (immediate)
+        {
+            clearTimeout(round.dashboardTimer);
+            round.dashboardTimer = null;
+            return pushDashboard(round);
+        }
+        if (!round.dashboardTimer)
+        {
+            round.dashboardTimer = setTimeout(() =>
+            {
+                round.dashboardTimer = null;
+                pushDashboard(round);
+            }, settings.dashboardDelayMs);
+            round.dashboardTimer.unref();
+        }
+        return Promise.resolve();
+    }
+
+    function isOpen(round)
+    {
+        return rounds.get(round.channelId) === round && !round.distributed;
+    }
+
+    function startTimers(round, minutes)
+    {
+        round.deadline = Date.now() + minutes * settings.minuteMs;
+
+        // A round of one minute or less would be "one minute left" from the start, so it gets no reminder
+        if (minutes > MIN_MINUTES)
+        {
+            round.warnTimer = setTimeout(() =>
+            {
+                if (!isOpen(round)) return;
+                say(round, `\u23F0 One minute left to join ${title}! Hurry up with \`${command} join\` ` +
+                    `(${plural(round.players.size, "player")} so far).`);
+            }, (minutes - 1) * settings.minuteMs);
+            round.warnTimer.unref();
+        }
+
+        round.endTimer = setTimeout(() =>
+        {
+            if (!isOpen(round)) return;
+            round.timeUp = true;
+            say(round, `\u231B Time is up for ${title}! ${plural(round.players.size, "player")} joined. ` +
+                "The host can hand out the themes now.");
+            refreshDashboard(round);
+        }, minutes * settings.minuteMs);
+        round.endTimer.unref();
+    }
+
+    function stopTimers(round)
+    {
+        clearTimeout(round.warnTimer);
+        clearTimeout(round.endTimer);
     }
 
     // ------------------------------------------------------------------
@@ -176,6 +340,7 @@ function createGame(config)
             existing.name = displayName(interaction);
             existing.interaction = interaction;
             existing.joinedAt = Date.now();
+            refreshDashboard(round);
             await interaction.reply(ephemeral(`Your ${entryNoun} was changed from ${inlineCode(previous)} to ${inlineCode(entryText(words))}.`));
             return;
         }
@@ -204,6 +369,7 @@ function createGame(config)
         }
 
         round.players.set(player.userId, player);
+        refreshDashboard(round);
         await interaction.reply(ephemeral(privateReply));
 
         try
@@ -257,13 +423,24 @@ function createGame(config)
             return `A ${title} round is already running in this channel (${existing.players.size} players).`;
         }
 
-        rounds.set(interaction.channelId, {
+        const limit = requestedMinutes(interaction);
+        const round = {
+            channelId: interaction.channelId,
             guildId: interaction.guildId,
             distributed: false,
+            closed: false,
             state: createState(),
             pool: null,
             players: new Map(),
-        });
+            channel: null,
+            dashboard: null,
+            deadline: null,
+            timeUp: false,
+            warnTimer: null,
+            endTimer: null,
+            dashboardTimer: null,
+        };
+        rounds.set(interaction.channelId, round);
 
         // The game's command only exists on the server while a round runs
         try
@@ -276,7 +453,22 @@ function createGame(config)
             return `The round is open, but the \`${command}\` command could not be added to this server, so nobody can join yet. Try \`close\` and \`start\` again.`;
         }
 
-        return config.intro;
+        if (limit) startTimers(round, limit.minutes);
+
+        try
+        {
+            round.channel = await channelOf(interaction);
+            if (round.channel) round.dashboard = await round.channel.send({ content: dashboardText(round), allowedMentions: { parse: [] } });
+        }
+        catch (error)
+        {
+            console.error(`Could not post the ${title} status message:`, error);
+        }
+
+        if (!limit) return config.intro;
+        return config.intro + `\n\u23F1\uFE0F You have **${plural(limit.minutes, "minute")}** to join` +
+            (limit.clamped ? ` (the time limit is kept between ${MIN_MINUTES} and ${MAX_MINUTES} minutes)` : "") +
+            ` (until <t:${Math.floor(round.deadline / 1000)}:R>).`;
     }
 
     async function distribute(interaction)
@@ -288,6 +480,8 @@ function createGame(config)
 
         // All state changes happen before the first await, so a join arriving meanwhile counts as a latecomer
         round.distributed = true;
+        stopTimers(round);
+        refreshDashboard(round);
         const entries = entriesOf(round);
         const assignment = assignInitial(entries, slots.length, apart);
         round.pool = createPool(entries, slots.length);
@@ -297,18 +491,24 @@ function createGame(config)
         }
 
         const players = [...round.players.values()];
-        const now = Date.now();
         const pingIds = [];
         let privateCount = 0;
 
-        const results = await Promise.allSettled(players.map(async player =>
+        // Nobody needs the themes instantly: send them in small batches with a pause in between
+        const results = [];
+        for (let i = 0; i < players.length; i += settings.batchSize)
         {
-            if (!player.interaction || now - player.joinedAt > FOLLOW_UP_WINDOW_MS)
+            if (i > 0) await sleep(settings.batchDelayMs);
+            const batch = players.slice(i, i + settings.batchSize);
+            results.push(...await Promise.allSettled(batch.map(async player =>
             {
-                throw new Error("join interaction expired");
-            }
-            await player.interaction.followUp(ephemeral(themeMessage(player.theme)));
-        }));
+                if (!player.interaction || Date.now() - player.joinedAt > FOLLOW_UP_WINDOW_MS)
+                {
+                    throw new Error("join interaction expired");
+                }
+                await player.interaction.followUp(ephemeral(themeMessage(player.theme)));
+            })));
+        }
 
         players.forEach((player, index) =>
         {
@@ -359,6 +559,9 @@ function createGame(config)
         if (!round) return `No ${title} round is running in this channel.`;
 
         rounds.delete(interaction.channelId);
+        round.closed = true;
+        stopTimers(round);
+        await refreshDashboard(round, true);
         const closed = `${title} is closed in this channel (${plural(round.players.size, "player")}). New players can no longer join.`;
 
         // Rounds are per channel but the command is per server: remove it once the last round of the server is over
@@ -418,4 +621,4 @@ function createGame(config)
     };
 }
 
-module.exports = { createGame, cleanWord, isValidWord };
+module.exports = { createGame, cleanWord, isValidWord, settings };

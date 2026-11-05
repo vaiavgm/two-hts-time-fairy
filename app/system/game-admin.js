@@ -8,7 +8,11 @@ const { canControlGames } = require("./auth");
 const GAME_APPS = ["gendom3", "gendom4"];
 
 const GAME_ACTIONS = [
-    { name: "start", description: "Open a round in this channel" },
+    {
+        name: "start",
+        description: "Open a round in this channel",
+        integerOptions: [{ name: "minutes", description: "Time limit in minutes (1-60, other values are clamped). Unset: no limit" }],
+    },
     { name: "distribute", description: "Hand out the themes to everybody who joined" },
     {
         name: "list",

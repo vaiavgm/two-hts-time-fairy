@@ -21,7 +21,7 @@ function addSlashSubcommand(group, name, description)
 
 const data = new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.");
 
-// /admin <game> start | distribute | list [sources] | close
+// /admin <game> start [minutes] | distribute | list [sources] | close
 for (const app of GAME_APPS)
 {
     data.addSubcommandGroup(group =>
@@ -35,6 +35,10 @@ for (const app of GAME_APPS)
                 for (const option of action.booleanOptions || [])
                 {
                     sub.addBooleanOption(o => o.setName(option.name).setDescription(option.description));
+                }
+                for (const option of action.integerOptions || [])
+                {
+                    sub.addIntegerOption(o => o.setName(option.name).setDescription(option.description));
                 }
                 return sub;
             });
