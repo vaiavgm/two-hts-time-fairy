@@ -30,3 +30,23 @@ Configure it in `.env` (see `.env.example`):
 - `app/ai/prompts.txt`: one prompt per line, `{track}` and `{author}` are filled in. Edit freely, no restart needed.
 - `app/ai/fallback.txt`: generic compliments, one picked at random when no provider works. Same placeholders.
 - Try a provider without Discord: `node scripts/ai-test.js "Track" "Author" openai`
+
+## Gendom 3
+
+Players send a word (e.g. "dank") and get a random genre combined with somebody else's word (e.g. "wet Techno"). Everything players see is ephemeral (no DMs). One round per channel, kept in memory only: a bot restart ends all rounds.
+
+Players:
+
+- `/gendom3 join word:<word>` joins the round (the bot announces the join, the word stays secret). Joining again before the themes are out changes your word.
+- `/gendom3 theme` shows your theme again, privately.
+
+Admins (the list in `app/system/auth.js`), via `/admin application:gendom3 command:...`:
+
+- `start` opens a round in the current channel.
+- `distribute` hands out the themes (at least 2 players). Players whose join message is younger than 14 minutes get an ephemeral reply to it; everybody else is mentioned once and uses `/gendom3 theme`. Nobody gets their own word; identical text from two players is avoided where possible. Players joining afterwards get a theme immediately (words may repeat, never their own).
+- `list` posts everybody's theme publicly (without pinging).
+- `close` ends the round, stops further joins and frees its memory.
+
+The command definition changed (subcommands), so re-register it: `node deploy-commands.js prod` (or `test`), or `/admin application:gendom3 command:Activate Slash Command confirm:confirm`.
+
+Tests for the game logic: `npm test`.
