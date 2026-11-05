@@ -119,6 +119,38 @@ test("small rounds wrap around: nobody gets their own words, givers repeat", () 
     }
 });
 
+test("small rounds keep slots listed in `apart` from the same player", () =>
+{
+    // With 3 or 4 players and 4 slots one player must provide two parts, but never both "who" and "does what"
+    for (let n = 3; n <= 4; n++)
+    {
+        for (let run = 0; run < 50; run++)
+        {
+            for (const [receiverId, sources] of assignInitial(multiEntries(n, 4), 4, [[0, 1]]))
+            {
+                assert.ok(sources.every(s => s.userId !== receiverId));
+                assert.notStrictEqual(sources[0].userId, sources[1].userId, `n=${n}`);
+            }
+        }
+    }
+    // With 2 players it cannot be avoided, but still works
+    for (const [receiverId, sources] of assignInitial(multiEntries(2, 4), 4, [[0, 1]]))
+    {
+        assert.ok(sources.every(s => s.userId !== receiverId));
+    }
+});
+
+test("drawLate repeats a player on other slots rather than on slots listed in `apart`", () =>
+{
+    for (let run = 0; run < 50; run++)
+    {
+        // Somebody has to provide two parts: slot 1 must take B (shared with slot 2), not A (shared with slot 0)
+        const pool = [[{ userId: "A", word: "a0" }], [{ userId: "A", word: "a1" }, { userId: "B", word: "b1" }], [{ userId: "B", word: "b2" }]];
+        const sources = drawLate(pool, { userId: "late", words: ["x", "y", "z"] }, [[0, 1]]);
+        assert.deepStrictEqual(sources.map(s => s.userId), ["A", "B", "B"]);
+    }
+});
+
 test("drawLate never returns the latecomer's own words and removes what it drew", () =>
 {
     const pool = createPool(multiEntries(5, 4), 4);

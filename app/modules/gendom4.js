@@ -8,7 +8,7 @@ const SLOTS = [
     {
         name: "who",
         label: "who",
-        description: "Who? A person, animal or thing, e.g. \"the dog\" or \"my grandma\"",
+        description: "Who? One person, animal or thing, e.g. \"the dog\" or \"my grandma\"",
         examples: ["the dog", "my grandma"],
         maxLength: 60,
     },
@@ -38,7 +38,7 @@ const SLOTS = [
 const INTRO = [
     "\u{1F3B2} **Gendom 4** is open in this channel!",
     "Write a little sentence in four parts with `/gendom4 join`:",
-    "- **who**: a person, animal or thing, e.g. `the dog`",
+    "- **who**: one person, animal or thing, e.g. `the dog`",
     "- **does what**: a verb with what goes with it, e.g. `eats pizza`",
     "- **where**: a place, e.g. `in the kitchen`",
     "- **when**: a time, e.g. `at midnight`",
@@ -62,6 +62,8 @@ module.exports = createGame({
     joinDescription: "Join with your sentence parts, e.g. the dog / eats pizza / in the kitchen / at midnight",
     entryNoun: "phrase",
     slots: SLOTS,
+    // Otherwise a small round can hand somebody "the man eats pizza", i.e. the start of another player's original sentence
+    apart: [["who", "does-what"]],
     intro: INTRO,
     buildTheme: sources => buildSentence(sources.map(source => source.word)),
 });

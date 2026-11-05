@@ -15,6 +15,7 @@
 //   entryNoun     what an entry is called: "word" or "phrase"
 //   slots         [{ name, label, description, examples: [...], maxLength }], one option of /<game> join each
 //   intro         message posted when a round is opened (the explanation for players)
+//   apart         optional, pairs of slot names that should not come from the same player, e.g. [["who", "does-what"]]
 //   createState() optional, per round state for buildTheme (e.g. a genre buffer)
 //   buildTheme(sources, state)  the theme text from one source ({ userId, word }) per slot
 
@@ -96,8 +97,13 @@ function displayName(interaction)
 function createGame(config)
 {
     const { name, title, entryNoun, slots } = config;
+    if ((config.apart || []).flat().some(slotName => !slots.some(slot => slot.name === slotName)))
+    {
+        throw new Error(`${name}: "apart" names a slot that does not exist.`);
+    }
     const command = "/" + name;
     const createState = config.createState || (() => ({}));
+    const apart = (config.apart || []).map(pair => pair.map(slotName => slots.findIndex(slot => slot.name === slotName)));
 
     // channelId -> { guildId, distributed, state, pool, players: Map<userId, Player> }
     // Player: { userId, name, words, sources, theme, interaction, joinedAt }
@@ -188,7 +194,7 @@ function createGame(config)
         if (round.distributed)
         {
             // Latecomer: their words go into the pool and they draw from it (see drawLate)
-            giveTheme(round, player, drawLate(round.pool, { userId: player.userId, words }));
+            giveTheme(round, player, drawLate(round.pool, { userId: player.userId, words }, apart));
             player.interaction = null;
             privateReply = themeMessage(player.theme);
         }
@@ -283,7 +289,7 @@ function createGame(config)
         // All state changes happen before the first await, so a join arriving meanwhile counts as a latecomer
         round.distributed = true;
         const entries = entriesOf(round);
-        const assignment = assignInitial(entries, slots.length);
+        const assignment = assignInitial(entries, slots.length, apart);
         round.pool = createPool(entries, slots.length);
         for (const player of round.players.values())
         {

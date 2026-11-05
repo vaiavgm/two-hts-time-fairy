@@ -42,7 +42,7 @@ Configure it in `.env` (see `.env.example`):
 Two party games that share one engine (`app/system/gendom.js`, shuffle logic in `app/system/gendom-logic.js`):
 
 - **Gendom 3**: players send a word (e.g. "dank") and get a random genre combined with somebody else's word (e.g. "wet Techno").
-- **Gendom 4**: players write a little sentence in four parts: **who** (`the dog`), **does what** (`eats pizza`), **where** (`in the kitchen`), **when** (`at midnight`). The parts are shuffled, so everybody gets a sentence made of other players' parts, e.g. "The telephone eats pizza on the moon after school."
+- **Gendom 4**: players write a little sentence in four parts: **who** (`the dog`, singular so it fits the verbs; a plural still reads fine, e.g. "The students eats pizza"), **does what** (`eats pizza`), **where** (`in the kitchen`), **when** (`at midnight`). The parts are shuffled, so everybody gets a sentence made of other players' parts, e.g. "The telephone eats pizza on the moon after school."
 
 Everything players see is ephemeral (no DMs). One round per channel and game, kept in memory only: a bot restart ends all rounds.
 
@@ -54,7 +54,7 @@ Players:
 Hosts, via `/admin gendom3 <action>` or `/admin gendom4 <action>`:
 
 - `start` opens a round in the current channel and posts how to play.
-- `distribute` hands out the themes (at least 2 players). Players whose join message is younger than 14 minutes get an ephemeral reply to it; everybody else is mentioned once and uses `theme`. The players are put in a random order and each part is taken from the player a random number of places further on, a different number per part, so nobody gets their own words and every word is used exactly once. In Gendom 4 the four parts come from four different players when there are at least 5 players; with fewer, the count wraps around and one player may provide two parts. Identical text from two players is avoided where possible.
+- `distribute` hands out the themes (at least 2 players). Players whose join message is younger than 14 minutes get an ephemeral reply to it; everybody else is mentioned once and uses `theme`. The players are put in a random order and each part is taken from the player a random number of places further on, a different number per part, so nobody gets their own words and every word is used exactly once. In Gendom 4 the four parts come from four different players when there are at least 5 players; with fewer, the count wraps around and one player may provide two parts, but never both **who** and **does what** (that would just be the start of their original sentence) unless there are only 2 players. Identical text from two players is avoided where possible.
 - Players joining after `distribute` get a theme immediately: their words are added to a pool of all words, and they draw from it (never their own words, from different players where possible). Drawn words are removed from the pool, so the next latecomer does not get the same ones; since every latecomer adds as many words as they take, the pool never runs out.
 - `list` posts everybody's theme publicly (without pinging). With `sources:True`, the names of the players whose words make up each theme follow it, in order: `@player: The telephone eats pizza on the moon after school. (Anna, Ben, Cleo, Dan)`.
 - `close` ends the round, stops further joins and frees its memory.

@@ -10,6 +10,10 @@ const GENRES = [
 
 const SHUFFLE_ATTEMPTS = 200;
 const DRAW_ATTEMPTS = 50;
+// Penalties when scoring a shuffle: two slots that should come from different players (see `apart`) weigh more
+// than a word with the same text as the receiver's own
+const APART_PENALTY = 10;
+const CLASH_PENALTY = 1;
 
 function normalize(word)
 {
@@ -60,9 +64,11 @@ function randomOffsets(playerCount, slotCount)
 // the word of the player at position (i + offset[s]) mod n. Since every offset is between 1 and n-1, nobody gets
 // their own word, and every word is handed out exactly once. With at least slotCount + 1 players the offsets are
 // all different, so the words of one receiver come from different players.
-// Several orders are tried, keeping the one where the fewest receivers get a word with the same text as their own
-// word in that slot (e.g. both typed "dank"). Returns Map<userId, source[]> (one source per slot).
-function assignInitial(entries, slotCount = 1)
+// Several orders are tried. The best one first avoids giving a receiver two slots listed together in `apart`
+// (pairs of slot indexes, e.g. [[0, 1]]: "who" and "does what") from the same player, which only happens when there
+// are too few players, and then avoids words with the same text as the receiver's own word in that slot (e.g. both
+// typed "dank"). Returns Map<userId, source[]> (one source per slot).
+function assignInitial(entries, slotCount = 1, apart = [])
 {
     if (entries.length < 2)
     {
@@ -70,14 +76,15 @@ function assignInitial(entries, slotCount = 1)
     }
 
     let best = null;
-    let bestClashes = Infinity;
+    let bestPenalty = Infinity;
 
-    for (let attempt = 0; attempt < SHUFFLE_ATTEMPTS && bestClashes > 0; attempt++)
+    for (let attempt = 0; attempt < SHUFFLE_ATTEMPTS && bestPenalty > 0; attempt++)
     {
         const order = shuffled(entries);
         const offsets = randomOffsets(order.length, slotCount);
         const assignment = new Map();
-        let clashes = 0;
+        // The offsets are the same for every receiver, so either all of them get a pair from one player or none
+        let penalty = apart.filter(([a, b]) => offsets[a] === offsets[b]).length * APART_PENALTY * order.length;
 
         for (let i = 0; i < order.length; i++)
         {
@@ -85,20 +92,26 @@ function assignInitial(entries, slotCount = 1)
             const sources = offsets.map((offset, slot) =>
             {
                 const giver = order[(i + offset) % order.length];
-                if (normalize(giver.words[slot]) === normalize(receiver.words[slot])) clashes++;
+                if (normalize(giver.words[slot]) === normalize(receiver.words[slot])) penalty += CLASH_PENALTY;
                 return { userId: giver.userId, word: giver.words[slot] };
             });
             assignment.set(receiver.userId, sources);
         }
 
-        if (clashes < bestClashes)
+        if (penalty < bestPenalty)
         {
             best = assignment;
-            bestClashes = clashes;
+            bestPenalty = penalty;
         }
     }
 
     return best;
+}
+
+// The slots that `apart` keeps from the same player as this slot
+function partnersOf(apart, slot)
+{
+    return apart.filter(pair => pair.includes(slot)).map(([a, b]) => (a === slot ? b : a));
 }
 
 // The pool latecomers draw from, one list of sources per slot. It starts with every word of the initial round.
@@ -111,8 +124,9 @@ function createPool(entries, slotCount = 1)
 // A latecomer adds their words to the pool and draws one word per slot, which is removed from the pool so the next
 // latecomer does not get the same one. Since every latecomer adds as many words as they take, the pool never runs
 // out. Never draws the latecomer's own word while anything else is left; prefers words from different players and
-// words whose text differs from the latecomer's own. Returns source[] (one per slot).
-function drawLate(pool, entry)
+// words whose text differs from the latecomer's own; two slots listed together in `apart` (see assignInitial) are
+// kept from the same player even more strongly. Returns source[] (one per slot).
+function drawLate(pool, entry, apart = [])
 {
     pool.forEach((slotPool, slot) => slotPool.push({ userId: entry.userId, word: entry.words[slot] }));
 
@@ -137,6 +151,7 @@ function drawLate(pool, entry)
             {
                 const cost = (source.userId === entry.userId ? 100 : 0) +
                     (usedGivers.has(source.userId) ? 10 : 0) +
+                    (partnersOf(apart, slot).some(other => picks[other] && picks[other].userId === source.userId) ? 20 : 0) +
                     (normalize(source.word) === normalize(entry.words[slot]) ? 1 : 0);
                 if (cost < lowest)
                 {
