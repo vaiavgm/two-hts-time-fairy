@@ -2,7 +2,7 @@ class Participant
 {
     constructor(user)
     {
-        this.user = user;
+        this.userId = user.id;
         this.cards = [];
         this.arcanumTime = "";
     }
@@ -71,7 +71,7 @@ function tarot(user)
 
     for (const p of participants)
     {
-        if (p.user == user)
+        if (p.userId === user.id)
         {
             if (p.cards.length > 0)
             {
