@@ -1,40 +1,58 @@
 const { MessageFlags, SlashCommandBuilder } = require("discord.js");
 const { isAdmin } = require("../system/auth");
-const { GAME_ACTIONS, isGameAction, mayControlGames, runGameAction } = require("../system/game-admin");
+const { GAME_APPS, GAME_ACTIONS, isGameApp, mayControlGames, runGameAction } = require("../system/game-admin");
 const slash_functions = require("../system/slash-commands");
 
-module.exports = {
+// Modules whose slash command can be enabled or disabled per server
+const SLASH_MODULES = ["gendom3", "time", "tarot", "dice", "randomgif", "reactionrole"];
 
-    data: new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.")
-        .addStringOption(option =>
-            option.setName("application")
-                .setDescription("Which application do you want to control? (e.g. \"gendom3\")")
-                .setRequired(true).addChoices(
-                    { name: "gendom3", value: "gendom3" },
-                    { name: "time", value: "time" },
-                    { name: "tarot", value: "tarot" },
-                    { name: "dice", value: "dice" },
-                    { name: "randomgif", value: "randomgif" },
-                    { name: "reactionrole", value: "reactionrole" }))
-        .addStringOption(option =>
-            option.setName("command")
-                .setDescription("Which command do you want to execute? (e.g. \"start\")")
-                .setRequired(true).addChoices(
-                    ...GAME_ACTIONS.map(action => ({ name: action, value: action })),
-                    { name: "Activate Slash Command", value: "activate" },
-                    { name: "Deactivate Slash Command", value: "deactivate" }))
-        .addStringOption(option =>
-            option.setName("confirm")
-                .setDescription("This is only needed for critical commands. Type \"confirm\", if you are sure to execute the function.")
-                .setRequired(false)),
+function addSlashSubcommand(group, name, description)
+{
+    return group.addSubcommand(sub => sub.setName(name).setDescription(description)
+        .addStringOption(option => option.setName("module")
+            .setDescription("Which module's slash command?")
+            .setRequired(true)
+            .addChoices(...SLASH_MODULES.map(module => ({ name: module, value: module }))))
+        .addBooleanOption(option => option.setName("confirm")
+            .setDescription("Set to True to confirm")
+            .setRequired(true)));
+}
+
+const data = new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.");
+
+// /admin <game> start | distribute | list | close
+for (const app of GAME_APPS)
+{
+    data.addSubcommandGroup(group =>
+    {
+        group.setName(app).setDescription(`Host controls for ${app}`);
+        for (const action of GAME_ACTIONS)
+        {
+            group.addSubcommand(sub => sub.setName(action.name).setDescription(action.description));
+        }
+        return group;
+    });
+}
+
+// /admin slash activate | deactivate
+data.addSubcommandGroup(group =>
+{
+    group.setName("slash").setDescription("Enable or disable a module's slash command on this server");
+    addSlashSubcommand(group, "activate", "Add a module's slash command to this server");
+    addSlashSubcommand(group, "deactivate", "Remove a module's slash command from this server");
+    return group;
+});
+
+module.exports = {
+    data,
 
     async execute(interaction, user, commands)
     {
-        const app = interaction.options.getString("application");
-        const cmd = interaction.options.getString("command");
+        const group = interaction.options.getSubcommandGroup();
+        const sub = interaction.options.getSubcommand();
 
-        // Game actions (start, distribute, ...) are open to moderators too; managing slash commands is for bot admins only
-        const allowed = isGameAction(cmd) ? mayControlGames(user, interaction.member) : isAdmin(user);
+        // Game actions are open to moderators too; managing slash commands is for bot admins only
+        const allowed = isGameApp(group) ? mayControlGames(user, interaction.member) : isAdmin(user);
         if (!allowed)
         {
             console.log(`[ADMIN] Denied ${user.username} (ID ${user.id})`);
@@ -42,27 +60,27 @@ module.exports = {
             return;
         }
 
-        // critical commands need a manual input of "confirm"
-        const confirm = interaction.options.getString("confirm") == "confirm";
-
-        console.log(`[ADMIN] ${user.username} (ID ${user.id}) executing command [${cmd}] on app [${app}]`);
+        console.log(`[ADMIN] ${user.username} (ID ${user.id}) executing [${group} ${sub}]`);
 
         // Some actions (e.g. handing out gendom3 themes) take longer than the 3 seconds Discord allows for a first reply
         await interaction.deferReply();
 
-        let result = "Enabling/Disabling Slash Commands require the 'confirm' option as parameter.";
-
-        if (isGameAction(cmd))
+        let result;
+        if (isGameApp(group))
         {
-            result = await runGameAction(interaction, commands, app, cmd);
+            result = await runGameAction(interaction, commands, group, sub);
         }
-        else if (cmd === "activate" && confirm)
+        else if (!interaction.options.getBoolean("confirm"))
         {
-            result = await slash_functions.addCommandsToGuild(interaction, app);
+            result = "Not confirmed: set the confirm option to True.";
         }
-        else if (cmd === "deactivate" && confirm)
+        else if (sub === "activate")
         {
-            result = await slash_functions.removeCommandsFromGuild(interaction, app);
+            result = await slash_functions.addCommandsToGuild(interaction, interaction.options.getString("module"));
+        }
+        else
+        {
+            result = await slash_functions.removeCommandsFromGuild(interaction, interaction.options.getString("module"));
         }
 
         const [reply, ...followUps] = [].concat(result);

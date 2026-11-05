@@ -3,7 +3,7 @@
 //
 // Players:  /gendom3 join word:<word>   (join, or change your word before the themes are handed out)
 //           /gendom3 theme              (show your theme again, privately)
-// Hosts:    /admin application:gendom3 command:start | distribute | list | close   (see system/game-admin.js)
+// Hosts:    /admin gendom3 start | distribute | list | close   (see system/game-admin.js)
 //
 // All replies to players are ephemeral (no DMs). One round per channel, kept in memory only:
 // a bot restart ends every round.

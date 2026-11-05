@@ -40,15 +40,17 @@ Players:
 - `/gendom3 join word:<word>` joins the round (the bot announces the join, the word stays secret). Joining again before the themes are out changes your word.
 - `/gendom3 theme` shows your theme again, privately.
 
-Hosts, via `/admin application:gendom3 command:...`:
+Hosts, via `/admin gendom3 <action>`:
 
 - `start` opens a round in the current channel.
 - `distribute` hands out the themes (at least 2 players). Players whose join message is younger than 14 minutes get an ephemeral reply to it; everybody else is mentioned once and uses `/gendom3 theme`. Nobody gets their own word; identical text from two players is avoided where possible. Players joining afterwards get a theme immediately (words may repeat, never their own).
 - `list` posts everybody's theme publicly (without pinging).
 - `close` ends the round, stops further joins and frees its memory.
 
-Who may use these: bot admins (`app/system/auth.js`), members with the `@moderator` role and server Administrators (rules in `app/system/game-admin.js`). `activate`/`deactivate` (enable or disable a module's slash command per server, with `confirm:confirm`) stay limited to bot admins. `/admin` is visible to everybody in the command picker; to hide it, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it, but then bot admins who are not server Administrators on a server can no longer use it unless a server admin allows them under Server Settings > Integrations.
+Who may use these: bot admins (`app/system/auth.js`), members with the `@moderator` role and server Administrators (rules in `app/system/game-admin.js`). To add another game, add its module name to `GAME_APPS` there and export `start`/`distribute`/`list`/`close` functions from the module.
 
-`deploy-commands.js` only registers `/admin` and `/time`; other modules are enabled per server with `/admin`. `/gendom3` changed (subcommands), so re-activate it: `application:gendom3 command:Activate Slash Command confirm:confirm`.
+`/admin slash activate|deactivate module:<module> confirm:True` enables or disables a module's slash command on the current server. Bot admins only. `/admin` is visible to everybody in the command picker; to hide it, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it, but then bot admins who are not server Administrators on a server can no longer use it unless a server admin allows them under Server Settings > Integrations.
+
+`deploy-commands.js` only registers `/admin` and `/time`; other modules are enabled per server with `/admin slash activate`. Both `/admin` (now subcommands instead of the `application`/`command` options) and `/gendom3` changed, so re-register `/admin` with `node deploy-commands.js prod` (or `test`) and re-activate `/gendom3` with `/admin slash activate module:gendom3 confirm:True`.
 
 Tests for the game logic: `npm test`.
