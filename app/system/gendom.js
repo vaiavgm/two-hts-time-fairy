@@ -208,8 +208,8 @@ function createGame(config)
         else if (round.distributed) status = "themes handed out";
 
         const head = [`\u{1F3B2} **${title}** (${status}): ${plural(players.length, "player")} joined`];
-        const minutesLeft = minutesLeftOf(round);
-        if (minutesLeft !== null) head.push(`\u23F1\uFE0F ${plural(minutesLeft, "minute")} left to join`);
+        const timeLeft = timeLeftText(round);
+        if (timeLeft) head.push(`\u23F1\uFE0F ${timeLeft}`);
         if (round.distributed && !round.closed) head.push(`Latecomers may still use \`${command} join\`.`);
 
         const state = round.distributed ? "theme ready" : "joined";
@@ -265,14 +265,43 @@ function createGame(config)
         return Promise.resolve();
     }
 
-    // Whole minutes left, fractions floored; null without a time limit, once the time is up, and when the round is
-    // over. Timers fire a little late, so a few seconds are added: right after a minute tick it reads N, not N-1.
-    function minutesLeftOf(round)
+    // The countdown line: whole minutes (fractions floored) while more than a minute is left, then "less than 50
+    // seconds" in steps of 10. Null without a time limit, once the time is up, and when the round is over.
+    // Timers fire a little late (or early), so the numbers get a small tolerance: right after a tick at N minutes
+    // the line reads N, not N-1, and a tick at 50 seconds reads 50.
+    function timeLeftText(round)
     {
         if (!round.deadline || round.timeUp || round.closed || round.distributed) return null;
         const left = round.deadline - Date.now();
         if (left <= 0) return null;
-        return Math.floor((left + settings.minuteMs / 20) / settings.minuteMs);
+
+        if (left > settings.minuteMs)
+        {
+            return `${plural(Math.floor((left + settings.minuteMs / 20) / settings.minuteMs), "minute")} left to join`;
+        }
+        const step = settings.minuteMs / 6;
+        const seconds = Math.max(10, Math.ceil((left - settings.minuteMs / 600) / step) * 10);
+        return `Less than ${seconds} seconds left to join!`;
+    }
+
+    // Schedules the next refresh of the countdown: once a minute (at N, N-1... minutes left), and in the last minute
+    // every 10 seconds (60, 50 ... 10 seconds left). That is 6 more edits of the status message in the last minute,
+    // well below Discord's limit for message edits. The end itself is handled by the end timer.
+    function scheduleTick(round)
+    {
+        const tolerance = settings.minuteMs / 600;
+        const left = round.deadline - Date.now() - tolerance;
+        const unit = left > settings.minuteMs ? settings.minuteMs : settings.minuteMs / 6;
+        const next = (Math.ceil(left / unit) - 1) * unit;
+        if (next <= 0) return;
+
+        round.tickTimer = setTimeout(() =>
+        {
+            if (!isOpen(round)) return;
+            refreshDashboard(round, true);
+            scheduleTick(round);
+        }, left + tolerance - next);
+        round.tickTimer.unref();
     }
 
     function isOpen(round)
@@ -296,9 +325,7 @@ function createGame(config)
             round.warnTimer.unref();
         }
 
-        // The countdown in the status message is refreshed every minute
-        round.tickTimer = setInterval(() => refreshDashboard(round, true), settings.minuteMs);
-        round.tickTimer.unref();
+        scheduleTick(round);
         round.endTimer = setTimeout(() => timeUp(round), minutes * settings.minuteMs);
         round.endTimer.unref();
     }
@@ -306,7 +333,7 @@ function createGame(config)
     // The time is up: hand out the themes and post the same summary the host would get from `distribute`
     async function timeUp(round)
     {
-        clearInterval(round.tickTimer);
+        clearTimeout(round.tickTimer);
         if (!isOpen(round)) return;
         // Timers may fire a little early, so the clock alone cannot tell that the time is up
         round.timeUp = true;
@@ -336,7 +363,7 @@ function createGame(config)
     {
         clearTimeout(round.warnTimer);
         clearTimeout(round.endTimer);
-        clearInterval(round.tickTimer);
+        clearTimeout(round.tickTimer);
     }
 
     // ------------------------------------------------------------------

@@ -153,7 +153,7 @@ test("start with minutes: reminder one minute before the end, themes handed out 
         assert.strictEqual(channel.sent.length, 1, "only the status message so far");
         await sleep(50);
         assert.match(channel.sent[1].content, /One minute left to join Gendom 3/);
-        assert.match(channel.sent[0].content, /1 minute left to join/);
+        assert.match(channel.sent[0].content, /Less than \d+ seconds left to join!/);
         assert.match(channel.sent[1].content, /handed out when the time is up/);
         await sleep(100);
         assert.strictEqual(channel.sent.length, 3);
@@ -255,28 +255,53 @@ test("the status message follows the round: joins, theme handout, close", withSe
     assert.doesNotMatch(status.content, /Latecomers/);
 }));
 
-test("the countdown shows whole minutes, floored, and is refreshed every minute",
-    withSettings({ minuteMs: 100, dashboardDelayMs: 5 }, async () =>
+test("the countdown shows whole minutes, then steps of 10 seconds in the last minute",
+    withSettings({ minuteMs: 300, dashboardDelayMs: 5, batchDelayMs: 1 }, async () =>
     {
+        // With minuteMs = 300 ms, one "second" is 5 ms and a 10 second step is 50 ms
         const guild = fakeGuild("g10");
         const channel = fakeChannel();
         await gendom3.start(hostInteraction(guild, channel, 3));
         const status = channel.sent[0];
         assert.match(status.content, /3 minutes left to join/);
 
-        await sleep(140);
+        await sleep(350);
         assert.match(status.content, /2 minutes left to join/, "refreshed by the minute tick, with nobody joining");
-        await sleep(100);
-        assert.match(status.content, /1 minute left to join/);
+        await sleep(275);
+        assert.match(status.content, /Less than 60 seconds left to join!/, "t=625: the last minute starts at the tick at t=600");
+        const editsBeforeLastMinuteTicks = status.edits.length;
 
-        await sleep(20);
+        await sleep(50);
+        assert.match(status.content, /Less than 50 seconds/, "t=675: after the tick at t=650");
         await gendom3.execute(joinInteraction(guild, "1", "Anna", ["dank"]));
-        await sleep(20);
-        assert.match(status.content, /0 minutes left to join/, "less than a minute left is 0 whole minutes");
+        await sleep(15);
+        assert.match(status.content, /Less than 50 seconds/, "a join keeps the countdown (44 seconds left)");
         assert.match(status.content, /1\) Anna - joined/);
+        await sleep(85);
+        assert.match(status.content, /Less than 30 seconds/, "t=775: after the tick at t=750");
+        assert.ok(status.edits.length - editsBeforeLastMinuteTicks <= 8, "a handful of edits at most, no flood");
+        await gendom3.close(hostInteraction(guild, null));
+    }));
 
-        await sleep(80);
-        assert.doesNotMatch(status.content, /left to join/);
+test("a one minute round counts down in seconds from the start, then hands out the themes",
+    withSettings({ minuteMs: 300, dashboardDelayMs: 5, batchDelayMs: 1 }, async () =>
+    {
+        const guild = fakeGuild("g11");
+        const channel = fakeChannel();
+        await gendom3.start(hostInteraction(guild, channel, 1));
+        await gendom3.execute(joinInteraction(guild, "1", "Anna", ["dank"]));
+        await gendom3.execute(joinInteraction(guild, "2", "Ben", ["wet"]));
+        const status = channel.sent[0];
+        await sleep(25);
+        assert.match(status.content, /Less than 60 seconds left to join!/);
+        await sleep(100);
+        assert.match(status.content, /Less than 40 seconds/);
+        await sleep(160);
+        assert.match(status.content, /Less than 10 seconds/, "t=285, after the last tick at t=250");
+        await sleep(60);
+        assert.match(status.content, /\(themes handed out\)/);
+        assert.doesNotMatch(status.content, /seconds left/);
+        assert.match(channel.sent[1].content, /Themes handed out to 2 players/);
         await gendom3.close(hostInteraction(guild, null));
     }));
 
