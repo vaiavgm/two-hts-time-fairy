@@ -40,13 +40,17 @@ Players:
 - `/gendom3 join word:<word>` joins the round (the bot announces the join, the word stays secret). Joining again before the themes are out changes your word.
 - `/gendom3 theme` shows your theme again, privately.
 
-Admins (the list in `app/system/auth.js`), via `/admin application:gendom3 command:...`:
+Hosts, via `/gendom3-admin`:
 
 - `start` opens a round in the current channel.
 - `distribute` hands out the themes (at least 2 players). Players whose join message is younger than 14 minutes get an ephemeral reply to it; everybody else is mentioned once and uses `/gendom3 theme`. Nobody gets their own word; identical text from two players is avoided where possible. Players joining afterwards get a theme immediately (words may repeat, never their own).
 - `list` posts everybody's theme publicly (without pinging).
 - `close` ends the round, stops further joins and frees its memory.
 
-The command definition changed (subcommands), so re-register it: `node deploy-commands.js prod` (or `test`), or `/admin application:gendom3 command:Activate Slash Command confirm:confirm`.
+Who can use `/gendom3-admin`: Discord only shows it to server Administrators by default. To let `@moderator` use it too, a server admin adds that role under Server Settings > Integrations > the bot > `/gendom3-admin`. In code, bot admins (`app/system/auth.js`), members with the `@moderator` role and server Administrators are accepted; anybody else Discord lets through is turned away.
+
+`/admin` (bot admins only) is limited to enabling or disabling a module's slash command per server (e.g. `application:gendom3admin command:Activate Slash Command confirm:confirm`).
+
+`deploy-commands.js` only registers `/admin` and `/time`; the other modules are enabled per server with `/admin`. The commands changed, so (re)activate both `gendom3` and `gendom3admin` that way.
 
 Tests for the game logic: `npm test`.
