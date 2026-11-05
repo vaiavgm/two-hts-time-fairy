@@ -96,14 +96,14 @@ function tarot(user)
     return getTheme(arcanum, newParticipant.arcanumTime);
 }
 
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder().setName("tarot").setDescription("shows your past, present, or future"),
 
     async execute(interaction, user)
     {
-        await user.send(tarot(user));
-        await interaction.reply("Check your PM for your theme!");
+        // Only the user who ran the command sees the reply, so no DM is needed (and closed DMs cannot break it)
+        await interaction.reply({ content: tarot(user), flags: MessageFlags.Ephemeral });
     },
 };
