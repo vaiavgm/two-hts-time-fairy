@@ -1,14 +1,33 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const Module = require("module");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+// The registry keeps its opt-outs in DATA_DIR; use a throwaway folder
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "fairy-test-"));
+process.env.DATA_DIR = dataDir;
+const optOutFile = path.join(dataDir, "command-opt-outs.json");
 
 // randomgif needs the native canvas library, which may be missing where the tests run: stub it so that
 // every module loads. The test for a broken module below uses a separate registry instance.
 const originalLoad = Module._load;
-Module._load = function(request, ...rest)
+const stubbedLoad = function(request, ...rest)
 {
     return request === "canvas" || request === "gif-encoder-2" ? {} : originalLoad.call(this, request, ...rest);
 };
+Module._load = stubbedLoad;
+
+// Loads a new registry instance, like a bot restart (module state starts empty, the opt-out file stays)
+function restartedRegistry()
+{
+    for (const key of Object.keys(require.cache))
+    {
+        if (key.includes("two-hts-time-fairy") && !key.includes("node_modules")) delete require.cache[key];
+    }
+    return require("../app/system/command-registry");
+}
 const registry = require("../app/system/command-registry");
 const gendom3 = require("../app/modules/gendom3");
 
@@ -104,6 +123,58 @@ test("a failing Discord call is reported, not thrown", async () =>
     }
 });
 
+test("startup sync adds default commands that a bot update introduced", async () =>
+{
+    const guild = fakeGuild("g8", ["admin", "roll"]);
+    await registry.syncOnStartup(guild);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time"]);
+});
+
+test("a default command an admin switched off stays off, also after a restart", async () =>
+{
+    const guild = fakeGuild("g9", ["admin", "time", "roll"]);
+    await registry.syncOnStartup(guild);
+    await registry.setPermanent(guild, "time", false);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll"]);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(optOutFile, "utf8")).g9, ["time"]);
+
+    const afterRestart = restartedRegistry();
+    await afterRestart.syncOnStartup(guild);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll"], "time must not come back");
+
+    await afterRestart.setPermanent(guild, "time", true);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time"]);
+    assert.strictEqual(JSON.parse(fs.readFileSync(optOutFile, "utf8")).g9, undefined);
+});
+
+test("switching off a non-default command does not need the opt-out file", async () =>
+{
+    fs.rmSync(optOutFile, { force: true });
+    const guild = fakeGuild("g10", ["admin", "time", "roll"]);
+    await registry.syncOnStartup(guild);
+    await registry.setPermanent(guild, "dice", false);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "time"]);
+    assert.strictEqual(fs.existsSync(optOutFile), false);
+});
+
+test("an unreadable opt-out file means starting without opt-outs", async () =>
+{
+    fs.writeFileSync(optOutFile, "{ this is not json");
+    const originalError = console.error;
+    console.error = () => null;
+    try
+    {
+        const afterRestart = restartedRegistry();
+        const guild = fakeGuild("g11", ["admin", "roll"]);
+        await afterRestart.syncOnStartup(guild);
+        assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time"]);
+    }
+    finally
+    {
+        console.error = originalError;
+    }
+});
+
 test("startup sync leaves a server alone when unknown commands might belong to a module that failed to load", async () =>
 {
     // load a fresh registry whose modules cannot load because canvas throws
@@ -128,7 +199,7 @@ test("startup sync leaves a server alone when unknown commands might belong to a
     finally
     {
         console.error = originalError;
-        Module._load = originalLoad;
+        Module._load = stubbedLoad;
     }
     assert.strictEqual(guild.setCalls, 0);
     assert.deepStrictEqual(sorted(guild.current), ["admin", "randomgif", "time"]);

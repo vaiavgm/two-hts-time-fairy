@@ -14,3 +14,6 @@ obj/*
 node_modules/*
 
 *.jpg
+
+# Runtime data written by the bot (see DATA_DIR in .env.example)
+data/

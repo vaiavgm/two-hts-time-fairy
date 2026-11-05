@@ -56,11 +56,12 @@ Who may use these: bot admins (`app/system/auth.js`), members with the `@moderat
 `app/system/command-registry.js` decides which commands each server has and makes Discord match (`guild.commands.set`):
 
 - `/admin` is always there.
-- Permanent modules are the ones switched on with `/admin slash activate`.
+- Default modules (a module exporting `defaultEnabled: true`, currently `time`) are added to every managed server at startup, so a bot update that introduces one shows up without any manual step. If an admin switches one off on a server (`/admin slash deactivate`), that is remembered in `command-opt-outs.json` and it stays off until it is activated again.
+- Other permanent modules are the ones switched on with `/admin slash activate`; Discord remembers them and the bot re-reads them at startup.
 - Game commands exist only while a round runs: `/admin gendom3 start` adds `/gendom3` to the server, and `close` removes it again once the last round of that server is over (rounds are per channel, the command is per server).
-- When the bot starts, it syncs every server that already has commands from it: permanent commands are kept, game commands (no round survives a restart) and unknown leftovers are removed. A server is left alone if an unknown command could belong to a module that failed to load.
+- At every startup the bot syncs each server that already has commands from it: permanent and default commands are kept or added, changed definitions (descriptions, options) are updated, game commands (no round survives a restart) and unknown leftovers are removed. A server is left alone if an unknown command could belong to a module that failed to load.
 
-The list of permanent commands lives in memory and is re-read from Discord at startup. To keep it somewhere else (e.g. a database), change the `permanent` handling in that file.
+The opt-out file is written to `DATA_DIR` (default `./data`, see `.env.example`), which must survive restarts. If it is lost, the only effect is that default commands switched off by an admin come back at the next startup.
 
 `deploy-commands.js` still registers `/admin` and `/time` from `config.json`. `/admin` changed (subcommands), so re-register it with `node deploy-commands.js prod` (or `test`).
 

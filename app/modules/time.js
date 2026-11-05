@@ -153,6 +153,9 @@ function handle2HTSTime(now = Date.now())
 const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
+    // Added to every managed server automatically at startup (unless an admin deactivated it there)
+    defaultEnabled: true,
+
     data: new SlashCommandBuilder().setName("time").setDescription("Shows the time until the next compo"),
 
     async execute(interaction)
