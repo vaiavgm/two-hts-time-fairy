@@ -1,0 +1,135 @@
+const test = require("node:test");
+const assert = require("node:assert");
+const Module = require("module");
+
+// randomgif needs the native canvas library, which may be missing where the tests run: stub it so that
+// every module loads. The test for a broken module below uses a separate registry instance.
+const originalLoad = Module._load;
+Module._load = function(request, ...rest)
+{
+    return request === "canvas" || request === "gif-encoder-2" ? {} : originalLoad.call(this, request, ...rest);
+};
+const registry = require("../app/system/command-registry");
+const gendom3 = require("../app/modules/gendom3");
+
+// A stand-in for a Discord server that records what its command list was last set to
+function fakeGuild(id, registeredNames)
+{
+    const guild = {
+        id,
+        name: "guild " + id,
+        current: registeredNames.slice(),
+        setCalls: 0,
+        commands: {
+            fetch: async () => new Map(guild.current.map(name => [name, { name }])),
+            set: async data =>
+            {
+                guild.setCalls++;
+                guild.current = data.map(d => d.name);
+            },
+        },
+    };
+    return guild;
+}
+
+function sorted(list)
+{
+    return list.slice().sort();
+}
+
+test("startup sync keeps permanent commands, drops game commands and unknown leftovers", async () =>
+{
+    const guild = fakeGuild("g1", ["admin", "time", "roll", "gendom3", "chatgpt"]);
+    await registry.syncOnStartup(guild);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time"]);
+});
+
+test("startup sync always keeps /admin, even if it was missing", async () =>
+{
+    const guild = fakeGuild("g2", ["time"]);
+    await registry.syncOnStartup(guild);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "time"]);
+});
+
+test("startup sync leaves servers without any of the bot's commands alone", async () =>
+{
+    const guild = fakeGuild("g3", []);
+    await registry.syncOnStartup(guild);
+    assert.strictEqual(guild.setCalls, 0);
+});
+
+test("permanent commands can be added and removed", async () =>
+{
+    const guild = fakeGuild("g4", ["admin"]);
+    await registry.setPermanent(guild, "tarot", true);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "tarot"]);
+    await registry.setPermanent(guild, "tarot", false);
+    assert.deepStrictEqual(guild.current, ["admin"]);
+});
+
+test("a game command exists only while a round runs, per server", async () =>
+{
+    const guild = fakeGuild("g5", ["admin", "time"]);
+    await registry.syncOnStartup(guild);
+    const interaction = channelId => ({ channelId, guildId: guild.id, guild });
+
+    await gendom3.start(interaction("c1"));
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "gendom3", "time"]);
+
+    await gendom3.start(interaction("c2"));
+    await gendom3.close(interaction("c1"));
+    assert.ok(guild.current.includes("gendom3"), "still needed by the round in channel c2");
+
+    await gendom3.close(interaction("c2"));
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "time"]);
+});
+
+test("a failing Discord call is reported, not thrown", async () =>
+{
+    const guild = fakeGuild("g6", ["admin"]);
+    guild.commands.set = async () =>
+    {
+        throw new Error("Discord says no");
+    };
+    const originalError = console.error;
+    console.error = () => null;
+    try
+    {
+        const message = await gendom3.start({ channelId: "c9", guildId: guild.id, guild });
+        assert.match(message, /could not be added/);
+    }
+    finally
+    {
+        console.error = originalError;
+    }
+});
+
+test("startup sync leaves a server alone when unknown commands might belong to a module that failed to load", async () =>
+{
+    // load a fresh registry whose modules cannot load because canvas throws
+    Module._load = function(request, ...rest)
+    {
+        if (request === "canvas") throw new Error("native canvas missing");
+        return originalLoad.call(this, request, ...rest);
+    };
+    for (const key of Object.keys(require.cache))
+    {
+        if (key.includes("two-hts-time-fairy") && !key.includes("node_modules")) delete require.cache[key];
+    }
+    const freshRegistry = require("../app/system/command-registry");
+
+    const guild = fakeGuild("g7", ["admin", "randomgif", "time"]);
+    const originalError = console.error;
+    console.error = () => null;
+    try
+    {
+        await freshRegistry.syncOnStartup(guild);
+    }
+    finally
+    {
+        console.error = originalError;
+        Module._load = originalLoad;
+    }
+    assert.strictEqual(guild.setCalls, 0);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "randomgif", "time"]);
+});

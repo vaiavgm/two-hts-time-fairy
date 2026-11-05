@@ -16,6 +16,7 @@ const {
     userMention,
 } = require("discord.js");
 const { nextGenre, assignInitial, assignLate } = require("../system/gendom-logic");
+const registry = require("../system/command-registry");
 
 const MAX_WORD_LENGTH = 40;
 const MIN_PLAYERS = 2;
@@ -24,7 +25,7 @@ const FOLLOW_UP_WINDOW_MS = 14 * 60 * 1000;
 const MAX_MESSAGE_LENGTH = 1900;
 const MAX_MENTIONS_PER_MESSAGE = 50;
 
-// channelId -> { distributed, genreBuffer, players: Map<userId, Player> }
+// channelId -> { guildId, distributed, genreBuffer, players: Map<userId, Player> }
 // Player: { userId, word, theme, interaction, joinedAt }
 const rounds = new Map();
 
@@ -177,13 +178,27 @@ async function showTheme(interaction)
 
 async function start(interaction)
 {
+    if (!interaction.guild) return "Gendom 3 can only be played in a server.";
+
     const existing = rounds.get(interaction.channelId);
     if (existing)
     {
         return `A Gendom 3 round is already running in this channel (${existing.players.size} players).`;
     }
 
-    rounds.set(interaction.channelId, { distributed: false, genreBuffer: [], players: new Map() });
+    rounds.set(interaction.channelId, { guildId: interaction.guildId, distributed: false, genreBuffer: [], players: new Map() });
+
+    // The /gendom3 command only exists on the server while a round runs
+    try
+    {
+        await registry.setTemporary(interaction.guild, "gendom3", true);
+    }
+    catch (error)
+    {
+        console.error("Could not register /gendom3:", error);
+        return "The round is open, but the `/gendom3` command could not be added to this server, so nobody can join yet. Try `close` and `start` again.";
+    }
+
     return "\u{1F3B2} **Gendom 3** is open in this channel! Join with `/gendom3 join` and a word, e.g. \"dank\". The word stays secret.";
 }
 
@@ -255,7 +270,22 @@ async function close(interaction)
     if (!round) return "No Gendom 3 round is running in this channel.";
 
     rounds.delete(interaction.channelId);
-    return `Gendom 3 is closed in this channel (${round.players.size} players). New players can no longer join.`;
+    const closed = `Gendom 3 is closed in this channel (${plural(round.players.size, "player")}). New players can no longer join.`;
+
+    // Rounds are per channel but the command is per server: remove it once the last round of the server is over
+    const stillRunning = [...rounds.values()].some(r => r.guildId === round.guildId);
+    if (stillRunning || !interaction.guild) return closed;
+
+    try
+    {
+        await registry.setTemporary(interaction.guild, "gendom3", false);
+    }
+    catch (error)
+    {
+        console.error("Could not remove /gendom3:", error);
+        return closed + " The `/gendom3` command could not be removed from the server; it is cleaned up when the bot restarts.";
+    }
+    return closed;
 }
 
 module.exports = {

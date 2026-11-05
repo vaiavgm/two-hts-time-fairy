@@ -3,8 +3,9 @@ const { isAdmin } = require("../system/auth");
 const { GAME_APPS, GAME_ACTIONS, isGameApp, mayControlGames, runGameAction } = require("../system/game-admin");
 const slash_functions = require("../system/slash-commands");
 
-// Modules whose slash command can be enabled or disabled per server
-const SLASH_MODULES = ["gendom3", "time", "tarot", "dice", "randomgif", "reactionrole"];
+// Modules whose slash command can be enabled or disabled per server. Games (GAME_APPS) are left out:
+// their command exists automatically while a round runs.
+const SLASH_MODULES = ["time", "tarot", "dice", "randomgif", "reactionrole"];
 
 function addSlashSubcommand(group, name, description)
 {

@@ -49,8 +49,19 @@ Hosts, via `/admin gendom3 <action>`:
 
 Who may use these: bot admins (`app/system/auth.js`), members with the `@moderator` role and server Administrators (rules in `app/system/game-admin.js`). To add another game, add its module name to `GAME_APPS` there and export `start`/`distribute`/`list`/`close` functions from the module.
 
-`/admin slash activate|deactivate module:<module> confirm:True` enables or disables a module's slash command on the current server. Bot admins only. `/admin` is visible to everybody in the command picker; to hide it, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it, but then bot admins who are not server Administrators on a server can no longer use it unless a server admin allows them under Server Settings > Integrations.
+`/admin slash activate|deactivate module:<module> confirm:True` enables or disables a module's slash command (`time`, `tarot`, `dice`, `randomgif`, `reactionrole`) on the current server. Bot admins only. `/admin` is visible to everybody in the command picker; to hide it, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it, but then bot admins who are not server Administrators on a server can no longer use it unless a server admin allows them under Server Settings > Integrations.
 
-`deploy-commands.js` only registers `/admin` and `/time`; other modules are enabled per server with `/admin slash activate`. Both `/admin` (now subcommands instead of the `application`/`command` options) and `/gendom3` changed, so re-register `/admin` with `node deploy-commands.js prod` (or `test`) and re-activate `/gendom3` with `/admin slash activate module:gendom3 confirm:True`.
+### Slash commands per server
+
+`app/system/command-registry.js` decides which commands each server has and makes Discord match (`guild.commands.set`):
+
+- `/admin` is always there.
+- Permanent modules are the ones switched on with `/admin slash activate`.
+- Game commands exist only while a round runs: `/admin gendom3 start` adds `/gendom3` to the server, and `close` removes it again once the last round of that server is over (rounds are per channel, the command is per server).
+- When the bot starts, it syncs every server that already has commands from it: permanent commands are kept, game commands (no round survives a restart) and unknown leftovers are removed. A server is left alone if an unknown command could belong to a module that failed to load.
+
+The list of permanent commands lives in memory and is re-read from Discord at startup. To keep it somewhere else (e.g. a database), change the `permanent` handling in that file.
+
+`deploy-commands.js` still registers `/admin` and `/time` from `config.json`. `/admin` changed (subcommands), so re-register it with `node deploy-commands.js prod` (or `test`).
 
 Tests for the game logic: `npm test`.
