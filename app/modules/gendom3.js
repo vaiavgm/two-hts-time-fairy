@@ -3,7 +3,7 @@
 //
 // Players:  /gendom3 join word:<word>   (join, or change your word before the themes are handed out)
 //           /gendom3 theme              (show your theme again, privately)
-// Hosts:    /gendom3-admin start | distribute | list | close   (see gendom3admin.js)
+// Hosts:    /game-admin start | distribute | list | close   (see game-admin.js)
 //
 // All replies to players are ephemeral (no DMs). One round per channel, kept in memory only:
 // a bot restart ends every round.
@@ -171,7 +171,7 @@ async function showTheme(interaction)
 }
 
 // ------------------------------------------------------------------
-// Host actions, called from /gendom3-admin. They return a string, a reply payload, or an array of those
+// Host actions, called from /game-admin. They return a string, a reply payload, or an array of those
 // (the first is the reply, the rest are follow-ups).
 // ------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-// Host controls for Gendom 3 (see gendom3.js for the game). Discord hides this command from everyone
+// Host controls for minigames, currently Gendom 3 (see gendom3.js for the game). Discord hides this command from everyone
 // except server Administrators; a server admin can add more roles (e.g. @moderator) under
 // Server Settings > Integrations > this bot. The code check below also admits bot admins and @moderator.
 
@@ -18,7 +18,7 @@ const ACTIONS = {
     close: ["close", "End the round in this channel and free its memory"],
 };
 
-const data = new SlashCommandBuilder().setName("gendom3-admin").setDescription("Host controls for Gendom 3")
+const data = new SlashCommandBuilder().setName("game-admin").setDescription("Host controls for minigames (Gendom 3)")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .setContexts(InteractionContextType.Guild);
 for (const [name, description] of Object.values(ACTIONS))

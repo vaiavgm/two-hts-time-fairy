@@ -10,7 +10,7 @@ module.exports = {
                 .setDescription("Which module do you want to (de)activate? (e.g. \"gendom3\")")
                 .setRequired(true).addChoices(
                     { name: "gendom3", value: "gendom3" },
-                    { name: "gendom3admin", value: "gendom3admin" },
+                    { name: "game-admin", value: "game-admin" },
                     { name: "time", value: "time" },
                     { name: "tarot", value: "tarot" },
                     { name: "dice", value: "dice" },
