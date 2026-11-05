@@ -9,8 +9,9 @@
 // a bot restart ends every round.
 //
 // `start` also posts a status message in the channel that is edited as players join (who joined, how many).
-// With the optional `minutes` (clamped to 1-60; unset means no time limit) the channel gets a reminder one minute
-// before the time is up and a note when it is up. The timer only announces, it does not close the round.
+// With the optional `minutes` (clamped to 1-60; unset means no time limit) the status message shows the minutes
+// left (refreshed every minute) and the channel gets a reminder one minute before the end. The timer does not
+// close the round or hand out the themes: that stays with the host.
 // `distribute` sends the private themes in small batches with a pause in between, so a big round does not hit
 // Discord's rate limits.
 //
@@ -146,7 +147,7 @@ function createGame(config)
     const apart = (config.apart || []).map(pair => pair.map(slotName => slots.findIndex(slot => slot.name === slotName)));
 
     // channelId -> { channelId, guildId, distributed, closed, state, pool, players: Map<userId, Player>,
-    //                channel, dashboard, deadline, timeUp, warnTimer, endTimer, dashboardTimer }
+    //                channel, dashboard, deadline, warnTimer, endTimer, tickTimer, dashboardTimer }
     // Player: { userId, name, words, sources, theme, interaction, joinedAt }
     const rounds = new Map();
 
@@ -206,12 +207,9 @@ function createGame(config)
         else if (round.distributed) status = "themes handed out";
 
         const head = [`\u{1F3B2} **${title}** (${status}): ${plural(players.length, "player")} joined`];
-        if (!round.closed && !round.distributed && round.deadline)
-        {
-            head.push(round.timeUp
-                ? "\u231B Time is up, waiting for the host."
-                : `\u23F1\uFE0F Time is up <t:${Math.floor(round.deadline / 1000)}:R>`);
-        }
+        const minutesLeft = minutesLeftOf(round);
+        if (minutesLeft !== null) head.push(`\u23F1\uFE0F ${plural(minutesLeft, "minute")} left to join`);
+        if (round.distributed && !round.closed) head.push(`Latecomers may still use \`${command} join\`.`);
 
         const state = round.distributed ? "theme ready" : "joined";
         const lines = [];
@@ -266,6 +264,16 @@ function createGame(config)
         return Promise.resolve();
     }
 
+    // Whole minutes left, fractions floored; null without a time limit, once the time is up, and when the round is
+    // over. Timers fire a little late, so a few seconds are added: right after a minute tick it reads N, not N-1.
+    function minutesLeftOf(round)
+    {
+        if (!round.deadline || round.closed || round.distributed) return null;
+        const left = round.deadline - Date.now();
+        if (left <= 0) return null;
+        return Math.floor((left + settings.minuteMs / 20) / settings.minuteMs);
+    }
+
     function isOpen(round)
     {
         return rounds.get(round.channelId) === round && !round.distributed;
@@ -287,13 +295,13 @@ function createGame(config)
             round.warnTimer.unref();
         }
 
+        // The countdown in the status message is refreshed every minute, and a last time when the time is up
+        round.tickTimer = setInterval(() => refreshDashboard(round, true), settings.minuteMs);
+        round.tickTimer.unref();
         round.endTimer = setTimeout(() =>
         {
-            if (!isOpen(round)) return;
-            round.timeUp = true;
-            say(round, `\u231B Time is up for ${title}! ${plural(round.players.size, "player")} joined. ` +
-                "The host can hand out the themes now.");
-            refreshDashboard(round);
+            clearInterval(round.tickTimer);
+            if (isOpen(round)) refreshDashboard(round);
         }, minutes * settings.minuteMs);
         round.endTimer.unref();
     }
@@ -302,6 +310,7 @@ function createGame(config)
     {
         clearTimeout(round.warnTimer);
         clearTimeout(round.endTimer);
+        clearInterval(round.tickTimer);
     }
 
     // ------------------------------------------------------------------
@@ -435,9 +444,9 @@ function createGame(config)
             channel: null,
             dashboard: null,
             deadline: null,
-            timeUp: false,
             warnTimer: null,
             endTimer: null,
+            tickTimer: null,
             dashboardTimer: null,
         };
         rounds.set(interaction.channelId, round);

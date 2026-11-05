@@ -135,8 +135,8 @@ test("a private reply that fails still gets the player mentioned", withSettings(
     await gendom3.close(hostInteraction(guild, null));
 }));
 
-test("start with minutes: reminder one minute before the end, then a note that time is up",
-    withSettings({ minuteMs: 60, dashboardDelayMs: 5 }, async () =>
+test("start with minutes: reminder one minute before the end, countdown line until the time is up",
+    withSettings({ minuteMs: 100, dashboardDelayMs: 5 }, async () =>
     {
         const guild = fakeGuild("g3");
         const channel = fakeChannel();
@@ -144,13 +144,15 @@ test("start with minutes: reminder one minute before the end, then a note that t
         assert.match(intro, /3 minutes/);
         assert.doesNotMatch(intro, /kept between/);
 
-        await sleep(60 * 2 - 20);
+        await sleep(190);
         assert.strictEqual(channel.sent.length, 1, "only the status message so far");
-        await sleep(60);
+        await sleep(50);
         assert.match(channel.sent[1].content, /One minute left to join Gendom 3/);
-        await sleep(60);
-        assert.match(channel.sent[2].content, /Time is up for Gendom 3/);
-        assert.match(channel.sent[0].content, /Time is up, waiting for the host/);
+        assert.match(channel.sent[0].content, /1 minute left to join/);
+        await sleep(100);
+        assert.strictEqual(channel.sent.length, 2, "no message when the time is up");
+        assert.doesNotMatch(channel.sent[0].content, /left to join/);
+        assert.match(channel.sent[0].content, /\(open\)/);
         await gendom3.close(hostInteraction(guild, null));
     }));
 
@@ -162,8 +164,7 @@ test("minutes are clamped to 1-60, and a one minute round has no reminder",
         const intro = await gendom3.start(hostInteraction(guild, channel, 1));
         assert.match(intro, /1 minute\*\*/);
         await sleep(40 + 30);
-        assert.strictEqual(channel.sent.length, 2);
-        assert.match(channel.sent[1].content, /Time is up/);
+        assert.strictEqual(channel.sent.length, 1, "no reminder and no time-up message");
         await gendom3.close(hostInteraction(guild, null));
 
         const big = await gendom3.start(hostInteraction(guild, fakeChannel(), 500));
@@ -183,7 +184,7 @@ test("without minutes there is no timer and no time line", withSettings({ minute
     const channel = fakeChannel();
     const intro = await gendom3.start(hostInteraction(guild, channel));
     assert.doesNotMatch(intro, /minute/);
-    assert.doesNotMatch(channel.sent[0].content, /Time is up/);
+    assert.doesNotMatch(channel.sent[0].content, /left to join/);
     await sleep(60);
     assert.strictEqual(channel.sent.length, 1);
     await gendom3.close(hostInteraction(guild, null));
@@ -226,6 +227,7 @@ test("the status message follows the round: joins, theme handout, close", withSe
     await gendom4.distribute(hostInteraction(guild, null));
     await sleep(30);
     assert.match(status.content, /\(themes handed out\)/);
+    assert.match(status.content, /Latecomers may still use `\/gendom4 join`/);
     assert.match(status.content, /1\) Vaia - theme ready/);
 
     await gendom4.execute(joinInteraction(guild, "4", "xyz", ["m", "n", "o", "p"]));
@@ -235,7 +237,33 @@ test("the status message follows the round: joins, theme handout, close", withSe
 
     await gendom4.close(hostInteraction(guild, null));
     assert.match(status.content, /\(closed\): 4 players joined/);
+    assert.doesNotMatch(status.content, /Latecomers/);
 }));
+
+test("the countdown shows whole minutes, floored, and is refreshed every minute",
+    withSettings({ minuteMs: 100, dashboardDelayMs: 5 }, async () =>
+    {
+        const guild = fakeGuild("g10");
+        const channel = fakeChannel();
+        await gendom3.start(hostInteraction(guild, channel, 3));
+        const status = channel.sent[0];
+        assert.match(status.content, /3 minutes left to join/);
+
+        await sleep(140);
+        assert.match(status.content, /2 minutes left to join/, "refreshed by the minute tick, with nobody joining");
+        await sleep(100);
+        assert.match(status.content, /1 minute left to join/);
+
+        await sleep(20);
+        await gendom3.execute(joinInteraction(guild, "1", "Anna", ["dank"]));
+        await sleep(20);
+        assert.match(status.content, /0 minutes left to join/, "less than a minute left is 0 whole minutes");
+        assert.match(status.content, /1\) Anna - joined/);
+
+        await sleep(80);
+        assert.doesNotMatch(status.content, /left to join/);
+        await gendom3.close(hostInteraction(guild, null));
+    }));
 
 test("a long player list is cut off below Discord's message limit", withSettings({ dashboardDelayMs: 5 }, async () =>
 {
