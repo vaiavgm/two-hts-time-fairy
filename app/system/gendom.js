@@ -10,8 +10,8 @@
 //
 // `start` also posts a status message in the channel that is edited as players join (who joined, how many).
 // With the optional `minutes` (clamped to 1-60; unset means no time limit) the status message shows the minutes
-// left (refreshed every minute) and the channel gets a reminder one minute before the end. The timer does not
-// close the round or hand out the themes: that stays with the host.
+// left (refreshed every minute), the channel gets a reminder one minute before the end, and when the time is up
+// the themes are handed out without further input from the host (as if the host had run `distribute`).
 // `distribute` sends the private themes in small batches with a pause in between, so a big round does not hit
 // Discord's rate limits.
 //
@@ -147,7 +147,7 @@ function createGame(config)
     const apart = (config.apart || []).map(pair => pair.map(slotName => slots.findIndex(slot => slot.name === slotName)));
 
     // channelId -> { channelId, guildId, distributed, closed, state, pool, players: Map<userId, Player>,
-    //                channel, dashboard, deadline, warnTimer, endTimer, tickTimer, dashboardTimer }
+    //                channel, dashboard, deadline, timeUp, warnTimer, endTimer, tickTimer, dashboardTimer }
     // Player: { userId, name, words, sources, theme, interaction, joinedAt }
     const rounds = new Map();
 
@@ -186,12 +186,13 @@ function createGame(config)
     // Status message and timer. Both are best effort: if the bot may not post in the channel, the round still works.
     // ------------------------------------------------------------------
 
-    async function say(round, content)
+    // `message` is a text (no mentions are parsed) or a complete payload
+    async function say(round, message)
     {
         if (!round.channel) return;
         try
         {
-            await round.channel.send({ content, allowedMentions: { parse: [] } });
+            await round.channel.send(typeof message === "string" ? { content: message, allowedMentions: { parse: [] } } : message);
         }
         catch (error)
         {
@@ -268,7 +269,7 @@ function createGame(config)
     // over. Timers fire a little late, so a few seconds are added: right after a minute tick it reads N, not N-1.
     function minutesLeftOf(round)
     {
-        if (!round.deadline || round.closed || round.distributed) return null;
+        if (!round.deadline || round.timeUp || round.closed || round.distributed) return null;
         const left = round.deadline - Date.now();
         if (left <= 0) return null;
         return Math.floor((left + settings.minuteMs / 20) / settings.minuteMs);
@@ -290,20 +291,45 @@ function createGame(config)
             {
                 if (!isOpen(round)) return;
                 say(round, `\u23F0 One minute left to join ${title}! Hurry up with \`${command} join\` ` +
-                    `(${plural(round.players.size, "player")} so far).`);
+                    `(${plural(round.players.size, "player")} so far). The themes are handed out when the time is up.`);
             }, (minutes - 1) * settings.minuteMs);
             round.warnTimer.unref();
         }
 
-        // The countdown in the status message is refreshed every minute, and a last time when the time is up
+        // The countdown in the status message is refreshed every minute
         round.tickTimer = setInterval(() => refreshDashboard(round, true), settings.minuteMs);
         round.tickTimer.unref();
-        round.endTimer = setTimeout(() =>
-        {
-            clearInterval(round.tickTimer);
-            if (isOpen(round)) refreshDashboard(round);
-        }, minutes * settings.minuteMs);
+        round.endTimer = setTimeout(() => timeUp(round), minutes * settings.minuteMs);
         round.endTimer.unref();
+    }
+
+    // The time is up: hand out the themes and post the same summary the host would get from `distribute`
+    async function timeUp(round)
+    {
+        clearInterval(round.tickTimer);
+        if (!isOpen(round)) return;
+        // Timers may fire a little early, so the clock alone cannot tell that the time is up
+        round.timeUp = true;
+
+        if (round.players.size < MIN_PLAYERS)
+        {
+            await say(round, `\u231B Time is up for ${title}, but at least ${MIN_PLAYERS} players are needed ` +
+                `(currently ${round.players.size}). The host can wait for more players and use \`distribute\`, or \`close\` the round.`);
+            await refreshDashboard(round, true);
+            return;
+        }
+
+        try
+        {
+            for (const payload of await handOut(round))
+            {
+                await say(round, payload);
+            }
+        }
+        catch (error)
+        {
+            console.error(`Could not hand out the ${title} themes when the time was up:`, error);
+        }
     }
 
     function stopTimers(round)
@@ -444,6 +470,7 @@ function createGame(config)
             channel: null,
             dashboard: null,
             deadline: null,
+            timeUp: false,
             warnTimer: null,
             endTimer: null,
             tickTimer: null,
@@ -477,7 +504,7 @@ function createGame(config)
         if (!limit) return config.intro;
         return config.intro + `\n\u23F1\uFE0F You have **${plural(limit.minutes, "minute")}** to join` +
             (limit.clamped ? ` (the time limit is kept between ${MIN_MINUTES} and ${MAX_MINUTES} minutes)` : "") +
-            ` (until <t:${Math.floor(round.deadline / 1000)}:R>).`;
+            ` (until <t:${Math.floor(round.deadline / 1000)}:R>), then the themes are handed out automatically.`;
     }
 
     async function distribute(interaction)
@@ -487,6 +514,13 @@ function createGame(config)
         if (round.distributed) return "The themes of this round are already handed out. Use `list` to post them, or `close` to end the round.";
         if (round.players.size < MIN_PLAYERS) return `At least ${MIN_PLAYERS} players are needed (currently ${round.players.size}).`;
 
+        return handOut(round);
+    }
+
+    // Hands out the themes of a round that is open and has enough players, for the host and for the timer.
+    // Returns the reply payloads: a summary, then the mentions of the players who could not be told privately.
+    async function handOut(round)
+    {
         // All state changes happen before the first await, so a join arriving meanwhile counts as a latecomer
         round.distributed = true;
         stopTimers(round);

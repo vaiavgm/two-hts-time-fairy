@@ -135,24 +135,38 @@ test("a private reply that fails still gets the player mentioned", withSettings(
     await gendom3.close(hostInteraction(guild, null));
 }));
 
-test("start with minutes: reminder one minute before the end, countdown line until the time is up",
-    withSettings({ minuteMs: 100, dashboardDelayMs: 5 }, async () =>
+test("start with minutes: reminder one minute before the end, themes handed out when the time is up",
+    withSettings({ minuteMs: 100, dashboardDelayMs: 5, batchDelayMs: 1 }, async () =>
     {
         const guild = fakeGuild("g3");
         const channel = fakeChannel();
         const intro = await gendom3.start(hostInteraction(guild, channel, 3));
         assert.match(intro, /3 minutes/);
+        assert.match(intro, /handed out automatically/);
         assert.doesNotMatch(intro, /kept between/);
+        const anna = joinInteraction(guild, "1", "Anna", ["dank"]);
+        const ben = joinInteraction(guild, "2", "Ben", ["wet"]);
+        await gendom3.execute(anna);
+        await gendom3.execute(ben);
 
         await sleep(190);
         assert.strictEqual(channel.sent.length, 1, "only the status message so far");
         await sleep(50);
         assert.match(channel.sent[1].content, /One minute left to join Gendom 3/);
         assert.match(channel.sent[0].content, /1 minute left to join/);
+        assert.match(channel.sent[1].content, /handed out when the time is up/);
         await sleep(100);
-        assert.strictEqual(channel.sent.length, 2, "no message when the time is up");
+        assert.strictEqual(channel.sent.length, 3);
+        assert.match(channel.sent[2].content, /Themes handed out to 2 players: 2 sent privately\./);
+        assert.match(channel.sent[0].content, /\(themes handed out\)/);
         assert.doesNotMatch(channel.sent[0].content, /left to join/);
-        assert.match(channel.sent[0].content, /\(open\)/);
+        for (const join of [anna, ben])
+        {
+            assert.ok(join.followUps.some(payload => payload.flags && /^Your theme is: `/.test(payload.content)), "private theme");
+        }
+
+        const again = await gendom3.distribute(hostInteraction(guild, null));
+        assert.match(again, /already handed out/);
         await gendom3.close(hostInteraction(guild, null));
     }));
 
@@ -164,7 +178,8 @@ test("minutes are clamped to 1-60, and a one minute round has no reminder",
         const intro = await gendom3.start(hostInteraction(guild, channel, 1));
         assert.match(intro, /1 minute\*\*/);
         await sleep(40 + 30);
-        assert.strictEqual(channel.sent.length, 1, "no reminder and no time-up message");
+        assert.strictEqual(channel.sent.length, 2, "no reminder, only the note that nobody can be served");
+        assert.match(channel.sent[1].content, /Time is up for Gendom 3, but at least 2 players are needed \(currently 0\)/);
         await gendom3.close(hostInteraction(guild, null));
 
         const big = await gendom3.start(hostInteraction(guild, fakeChannel(), 500));
