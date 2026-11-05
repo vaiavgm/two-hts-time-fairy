@@ -18,7 +18,7 @@ module.exports = {
         .addStringOption(option =>
             option.setName("command")
                 .setDescription("Which command do you want to execute? (e.g. \"start\")")
-                .setRequired(true).addChoices({ name: "start", value: "start" }, { name: "reset", value: "reset" }, { name: "Activate Slash Command", value: "activate" }, { name: "Deactivate Slash Command", value: "deactivate" }))
+                .setRequired(true).addChoices({ name: "start", value: "start" }, { name: "distribute", value: "distribute" }, { name: "list", value: "list" }, { name: "close", value: "close" }, { name: "Activate Slash Command", value: "activate" }, { name: "Deactivate Slash Command", value: "deactivate" }))
         .addStringOption(option =>
             option.setName("confirm")
                 .setDescription("This is only needed for critical commands. Type \"confirm\", if you are sure to execute the function.")
@@ -41,12 +41,17 @@ module.exports = {
 
         console.log(`[ADMIN] ${user.username} (ID ${user.id}) executing command [${cmd}] on app [${app}]`);
 
+        // Some actions (e.g. handing out gendom3 themes) take longer than the 3 seconds Discord allows for a first reply
+        await interaction.deferReply();
+
         result = "Unknown app or command. Enabling/Disabling Slash Commands require the 'confirm' option as parameter.";
 
         switch (cmd)
         {
-            case "reset":
             case "start":
+            case "distribute":
+            case "list":
+            case "close":
             {
                 const target = commands.get(app);
                 if (!target || typeof target[cmd] !== "function")
@@ -54,7 +59,8 @@ module.exports = {
                     result = `The app **${app}** does not support the "${cmd}" command.`;
                     break;
                 }
-                result = await target[cmd]();
+                // An action may return one reply or an array (first one is the reply, the others follow-ups)
+                result = await target[cmd](interaction);
                 break;
             }
             case "activate":
@@ -69,6 +75,11 @@ module.exports = {
                 break;
         }
 
-        await interaction.reply({ content: result });
+        const [reply, ...followUps] = [].concat(result);
+        await interaction.editReply(reply);
+        for (const followUp of followUps)
+        {
+            await interaction.followUp(followUp);
+        }
     },
 };
