@@ -37,23 +37,29 @@ Configure it in `.env` (see `.env.example`):
 - `app/ai/fallback.txt`: generic compliments, one picked at random when no provider works. Same placeholders.
 - Try a provider without Discord: `node scripts/ai-test.js "Track" "Author" openai`
 
-## Gendom 3
+## Gendom 3 and Gendom 4
 
-Players send a word (e.g. "dank") and get a random genre combined with somebody else's word (e.g. "wet Techno"). Everything players see is ephemeral (no DMs). One round per channel, kept in memory only: a bot restart ends all rounds.
+Two party games that share one engine (`app/system/gendom.js`, shuffle logic in `app/system/gendom-logic.js`):
+
+- **Gendom 3**: players send a word (e.g. "dank") and get a random genre combined with somebody else's word (e.g. "wet Techno").
+- **Gendom 4**: players write a little sentence in four parts: **who** (`the dog`), **does what** (`eats pizza`), **where** (`in the kitchen`), **when** (`at midnight`). The parts are shuffled, so everybody gets a sentence made of other players' parts, e.g. "The telephone eats pizza on the moon after school."
+
+Everything players see is ephemeral (no DMs). One round per channel and game, kept in memory only: a bot restart ends all rounds.
 
 Players:
 
-- `/gendom3 join word:<word>` joins the round (the bot announces the join, the word stays secret). Joining again before the themes are out changes your word.
-- `/gendom3 theme` shows your theme again, privately.
+- `/gendom3 join word:<word>` or `/gendom4 join who:<…> does-what:<…> where:<…> when:<…>` joins the round (the bot announces the join, the entry stays secret). Joining again before the themes are out changes your entry. An entry with a blank part (or one without any letter or digit) is rejected with a private message naming the part and giving examples.
+- `/gendom3 theme` / `/gendom4 theme` shows your theme again, privately.
 
-Hosts, via `/admin gendom3 <action>`:
+Hosts, via `/admin gendom3 <action>` or `/admin gendom4 <action>`:
 
-- `start` opens a round in the current channel.
-- `distribute` hands out the themes (at least 2 players). Players whose join message is younger than 14 minutes get an ephemeral reply to it; everybody else is mentioned once and uses `/gendom3 theme`. Nobody gets their own word; identical text from two players is avoided where possible. Players joining afterwards get a theme immediately (words may repeat, never their own).
-- `list` posts everybody's theme publicly (without pinging).
+- `start` opens a round in the current channel and posts how to play.
+- `distribute` hands out the themes (at least 2 players). Players whose join message is younger than 14 minutes get an ephemeral reply to it; everybody else is mentioned once and uses `theme`. The players are put in a random order and each part is taken from the player a random number of places further on, a different number per part, so nobody gets their own words and every word is used exactly once. In Gendom 4 the four parts come from four different players when there are at least 5 players; with fewer, the count wraps around and one player may provide two parts. Identical text from two players is avoided where possible.
+- Players joining after `distribute` get a theme immediately: their words are added to a pool of all words, and they draw from it (never their own words, from different players where possible). Drawn words are removed from the pool, so the next latecomer does not get the same ones; since every latecomer adds as many words as they take, the pool never runs out.
+- `list` posts everybody's theme publicly (without pinging). With `sources:True`, the names of the players whose words make up each theme follow it, in order: `@player: The telephone eats pizza on the moon after school. (Anna, Ben, Cleo, Dan)`.
 - `close` ends the round, stops further joins and frees its memory.
 
-Who may use these: bot admins (`app/system/auth.js`), members with the `@moderator` role and server Administrators (rules in `app/system/game-admin.js`). To add another game, add its module name to `GAME_APPS` there and export `start`/`distribute`/`list`/`close` functions from the module.
+Who may use these: bot admins (`app/system/auth.js`), members with the `@moderator` role and server Administrators (rules in `app/system/game-admin.js`). To add another game, add its module name to `GAME_APPS` there and export `start`/`distribute`/`list`/`close` functions from the module (a Gendom-style game gets them all from `createGame` in `app/system/gendom.js`, see `app/modules/gendom4.js`).
 
 `/admin slash activate|deactivate module:<module> confirm:True` enables or disables a module's slash command (`time`, `tarot`, `dice`, `randomgif`, `reactionrole`) on the current server. Bot admins only. `/admin` is visible to everybody in the command picker; to hide it, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it, but then bot admins who are not server Administrators on a server can no longer use it unless a server admin allows them under Server Settings > Integrations.
 
@@ -64,11 +70,11 @@ Who may use these: bot admins (`app/system/auth.js`), members with the `@moderat
 - `/admin` is always there.
 - Default modules (a module exporting `defaultEnabled: true`, currently `time`) are added to every managed server at startup, so a bot update that introduces one shows up without any manual step. If an admin switches one off on a server (`/admin slash deactivate`), that is remembered in `command-opt-outs.json` and it stays off until it is activated again.
 - Other permanent modules are the ones switched on with `/admin slash activate`; Discord remembers them and the bot re-reads them at startup.
-- Game commands exist only while a round runs: `/admin gendom3 start` adds `/gendom3` to the server, and `close` removes it again once the last round of that server is over (rounds are per channel, the command is per server).
+- Game commands exist only while a round runs: `/admin gendom3 start` adds `/gendom3` to the server (likewise for `gendom4`), and `close` removes it again once the last round of that server is over (rounds are per channel, the command is per server).
 - At every startup the bot syncs each server that already has commands from it: permanent and default commands are kept or added, changed definitions (descriptions, options) are updated (Discord is not called at all if a server already matches), game commands (no round survives a restart) and unknown leftovers are removed. A server is left alone if an unknown command could belong to a module that failed to load.
 
 The opt-out file is written to `DATA_DIR` (default `./data`, see `.env.example`), which must survive restarts. If it is lost, the only effect is that default commands switched off by an admin come back at the next startup.
 
-`deploy-commands.js` still registers `/admin` and `/time` from `config.json`. `/admin` changed (subcommands), so re-register it with `node deploy-commands.js prod` (or `test`).
+`deploy-commands.js` still registers `/admin` and `/time` from `config.json`. `/admin` changed (subcommands, and the `gendom4` group with `list sources`), so re-register it with `node deploy-commands.js prod` (or `test`).
 
 Tests for the game logic: `npm test`.

@@ -1,16 +1,20 @@
 // Access rules and dispatch for minigame host actions, used by /admin (one subcommand group per game:
 // /admin gendom3 start). To add a game, add its module name to GAME_APPS and export a function per
-// action from the module. An action gets the interaction and returns a string, a reply payload, or an
-// array of those (the first is the reply, the others follow-ups).
+// action from the module. An action gets the interaction (with the action's options, if any) and returns a
+// string, a reply payload, or an array of those (the first is the reply, the others follow-ups).
 
 const { canControlGames } = require("./auth");
 
-const GAME_APPS = ["gendom3"];
+const GAME_APPS = ["gendom3", "gendom4"];
 
 const GAME_ACTIONS = [
     { name: "start", description: "Open a round in this channel" },
     { name: "distribute", description: "Hand out the themes to everybody who joined" },
-    { name: "list", description: "Post everybody's theme publicly" },
+    {
+        name: "list",
+        description: "Post everybody's theme publicly",
+        booleanOptions: [{ name: "sources", description: "Also name the players whose words make up each theme" }],
+    },
     { name: "close", description: "End the round in this channel and free its memory" },
 ];
 
