@@ -17,15 +17,15 @@ Everything players see is ephemeral (no DMs). One round per channel and game, ke
 
 ## Hosts
 
-Hosts use `/admin gendom3 <action>` or `/admin gendom4 <action>`. Allowed users are listed in [Permissions](#permissions) below.
+Hosts use `/admin app:gendom3 action:<action>` or `/admin app:gendom4 action:<action>`. Allowed users are listed in [Permissions](#permissions) below.
 
 | Action | What it does |
 | --- | --- |
-| `start [minutes]` | Opens a round in the current channel and posts how to play, plus a status message the bot edits as players join. |
+| `start`, optional `minutes` | Opens a round in the current channel and posts how to play, plus a status message the bot edits as players join. |
 | `distribute` | Hands out the themes (at least 2 players). |
 | `list` | Posts everybody's theme publicly, without pinging. |
 | `list sources:True` | As `list`, with the names of the players whose words make up each theme. |
-| `kick user:<player>` | Removes a player's entry before `distribute`. |
+| `kick` with `user:<player>` | Removes a player's entry before `distribute`. |
 | `close` | Ends the round, stops joins and frees its memory. |
 
 ### `start`

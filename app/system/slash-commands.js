@@ -1,4 +1,4 @@
-// Per-guild slash command management, used by /admin slash activate|deactivate.
+// Per-guild slash command management, used by /admin action:activate|deactivate.
 // The command registry (command-registry.js) keeps the list of commands per server and makes Discord match it.
 // To make another module available there, add it to SLASH_MODULES in admin.js.
 

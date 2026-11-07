@@ -16,7 +16,7 @@ A Discord bot for the 2HTS community. It is a reboot of the discontinued 2HTSTim
 
 Optionally the bot also comments on "Now Playing" posts with AI, see [AI track comments](#ai-track-comments).
 
-Module names (used with `/admin slash`) are `time`, `dice`, `tarot`, `randomgif`, `reactionrole`. The `dice` module provides the `/roll` command. `ping` and `react` exist as modules but are not enabled on servers by default.
+Module names (the `app` option of `/admin`) are `time`, `dice`, `tarot`, `randomgif`, `reactionrole`. The `dice` module provides the `/roll` command. `ping` and `react` exist as modules but are not enabled on servers by default.
 
 ## Requirements
 
@@ -42,13 +42,14 @@ cp .env.example .env     # then fill in the tokens, see Configuration
 
 1. Set `DISCORD_TOKEN` (TimeFairy) and, if you want the test bot, `FAKE_TOKEN` (FakeFairy) in `.env`.
 2. Check `config.json` (production servers) and `config-local.json` (test servers). These hold the server IDs that `deploy-commands.js` registers commands on.
-3. Register the slash commands once, and again after command changes:
+3. Register the slash commands once on a new server (the bot leaves servers without any of its commands alone):
 
    ```bash
    node deploy-commands.js prod     # TimeFairy
    node deploy-commands.js test     # FakeFairy
-   node deploy-commands.js prod --clear-global   # also remove leftover global commands (duplicates)
    ```
+
+   After that, do not run it again: it resets each server to `/admin`, `/time` and `/version` and drops modules activated there. Changed commands are updated by the bot itself at every start, and leftover global commands (duplicates) are removed then too.
 
    The target is always given explicitly. The `TESTING` setting in `.env` does not decide which bot is deployed.
 4. Start the bot with `npm start`.
@@ -62,6 +63,7 @@ All settings live in `.env` (see `.env.example`).
 | `DISCORD_TOKEN` | Token of the production bot (TimeFairy) |
 | `FAKE_TOKEN` | Token of the test bot (FakeFairy) |
 | `TESTING` | Set to `yes`, `true`, `1` or `on` (case-insensitive) to run as FakeFairy. Any other value, including `no` or empty, runs the production bot. |
+| `CHORUS_BOT_ID`, `CHORUS_CHANNEL_ID` | Optional Chorus relay, see [Now Playing channels and Chorus relay](#now-playing-channels-and-chorus-relay) |
 | `DATA_DIR` | Folder for small runtime files, default `./data`. Must survive restarts. |
 | `AI_*`, `ANTHROPIC_*`, `OPENAI_*`, `GEMINI_*` | Optional AI track comments, see below |
 
@@ -89,12 +91,31 @@ If the run fails with HTTP 401 or 403 and an HTML page, the key is wrong or Clou
 
 `/admin` is visible to everybody in the command picker. Its actions are limited to bot admins, server Administrators and members with the `@moderator` role.
 
-- `/admin slash activate|deactivate module:<module> confirm:True` enables or disables a module's slash command on the current server. Bot admins only.
-- `/admin gendom3 …` and `/admin gendom4 …` run the party games, see [docs/gendom.md](docs/gendom.md).
+`/admin` is a single command: pick `app`, then `action`. The `action` list only shows what the chosen app supports. The remaining options (`minutes`, `sources`, `user`, `confirm`) say in their description which action reads them. Options an action does not read are ignored, and the bot says so privately.
+
+- `/admin app:<module> action:activate|deactivate confirm:True` enables or disables a module's slash command on the current server. Bot admins only.
+- `/admin app:gendom3 action:…` and `/admin app:gendom4 action:…` run the party games, see [docs/gendom.md](docs/gendom.md).
+- `/admin app:nowplaying action:register|unregister|channels` chooses the channels that get Chorus entries, length warnings and AI comments, see [Now Playing channels and Chorus relay](#now-playing-channels-and-chorus-relay). Bot admins only.
 
 To hide `/admin` from non-admins, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it. Then bot admins who are not server Administrators can only use it if a server admin allows them under Server Settings → Integrations.
 
 How the commands end up on each server is described in [docs/slash-commands.md](docs/slash-commands.md).
+
+## Now Playing channels and Chorus relay
+
+The bot only posts track-related messages (Chorus entries, the 3:30 length warning, AI comments) in channels a bot admin registered. Every other channel and server stays quiet, even while a party runs.
+
+- `/admin app:nowplaying action:register` registers the current channel, `unregister` removes it, `channels` lists the server's registered channels. Bot admins only.
+- The list is stored in `DATA_DIR/now-playing-channels.json`.
+- "Now Playing: Track by Author [m:ss]" posts typed by track reporters (see `app/system/auth.js`) are only handled in registered channels.
+
+Chorus, the bot that runs the listening party, posts its entries in its own server. Instead of people copying them, Time Fairy can copy them itself:
+
+1. Invite Time Fairy to the Chorus server. It only needs View Channel and Read Message History in the Chorus channel. It never posts there.
+2. Set `CHORUS_BOT_ID` (Chorus's user ID) and `CHORUS_CHANNEL_ID` (where Chorus posts) in `.env`. Discord: enable Developer Mode, then right-click > Copy ID.
+3. Restart the bot. The startup log says whether the relay is on and how many channels are registered.
+
+Each entry is posted into every registered channel as `Now Playing: Track by Author [m:ss]` with the round and entry number below it. The length warning and the AI comment follow there. Copying by hand still works. A track announced both ways in the same channel within its length is only handled once.
 
 ## AI track comments
 

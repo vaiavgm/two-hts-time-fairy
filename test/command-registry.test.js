@@ -234,7 +234,7 @@ test("startup sync leaves a server alone when unknown commands might belong to a
     assert.deepStrictEqual(sorted(guild.current), ["admin", "randomgif", "time", "version"]);
 });
 
-test("/reactionrole is never added on its own, only by an explicit /admin slash activate", async () =>
+test("/reactionrole is never added on its own, only by an explicit /admin action:activate", async () =>
 {
     const reactionrole = require("../app/modules/reactionrole");
     assert.strictEqual(reactionrole.defaultEnabled, false);
@@ -249,4 +249,42 @@ test("/reactionrole is never added on its own, only by an explicit /admin slash 
 
     await registry.setPermanent(guild, "reactionrole", false);
     assert.ok(!guild.current.includes("reactionrole"), "removed again by the admin");
+});
+
+// A client whose global command list can be fetched and replaced
+function fakeClient(globalNames)
+{
+    const state = { names: [...globalNames], setCalls: 0 };
+    const asCollection = () =>
+    {
+        const snapshot = state.names.map(name => ({ name }));
+        return { size: snapshot.length, values: () => snapshot.values() };
+    };
+    state.client = {
+        application: {
+            commands: {
+                fetch: async () => asCollection(),
+                set: async list =>
+                {
+                    state.setCalls++;
+                    state.names = list.map(c => c.name);
+                },
+            },
+        },
+    };
+    return state;
+}
+
+test("leftover global commands are removed and named", async () =>
+{
+    const state = fakeClient(["admin", "time"]);
+    assert.deepStrictEqual(await registry.clearGlobalCommands(state.client), ["admin", "time"]);
+    assert.deepStrictEqual(state.names, []);
+});
+
+test("without global commands Discord is not asked to change anything", async () =>
+{
+    const state = fakeClient([]);
+    assert.deepStrictEqual(await registry.clearGlobalCommands(state.client), []);
+    assert.strictEqual(state.setCalls, 0);
 });
