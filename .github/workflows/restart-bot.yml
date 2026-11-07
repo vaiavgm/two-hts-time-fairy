@@ -1,0 +1,44 @@
+# Restarts the bot on the SparkedHost panel after every push or merge into main, so its startup command pulls the new code.
+name: Restart bot
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "test/**"
+      - ".vscode/**"
+  workflow_dispatch:
+
+concurrency:
+  group: restart-bot
+  cancel-in-progress: true
+
+jobs:
+  restart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Send restart signal
+        env:
+          PANEL_API_KEY: ${{ secrets.PANEL_API_KEY }}
+          PANEL_URL: ${{ vars.PANEL_URL || 'https://control.sparkedhost.us' }}
+          SERVER_ID: ${{ vars.PANEL_SERVER_ID || '2e318161' }}
+        run: |
+          if [ -z "$PANEL_API_KEY" ]; then
+            echo "::error::Secret PANEL_API_KEY is not set (panel: Account -> API Credentials)."
+            exit 1
+          fi
+          status=$(curl -sS -o response.txt -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $PANEL_API_KEY" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -d '{"signal":"restart"}' \
+            "$PANEL_URL/api/client/servers/$SERVER_ID/power")
+          if [ "$status" != "204" ]; then
+            echo "::error::Panel answered HTTP $status. 401/403 with an HTML page usually means Cloudflare blocked the request or the key is wrong."
+            head -c 500 response.txt
+            exit 1
+          fi
+          echo "Restart signal accepted."
