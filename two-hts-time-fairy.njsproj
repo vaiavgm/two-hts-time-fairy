@@ -29,7 +29,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include=".env" />
-    <Content Include=".eslintrc.json" />
+    <Content Include="eslint.config.js" />
     <Content Include="app\bot.js" />
     <Content Include="app\modules\admin.js" />
     <Content Include="app\modules\dice.js" />
@@ -51,9 +51,37 @@
     <Content Include="README.md" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="app\ai\fallback.txt" />
+    <Content Include="app\ai\index.js" />
+    <Content Include="app\ai\prompts.txt" />
+    <Content Include="app\ai\text-files.js" />
+    <Content Include="app\ai\providers\anthropic.js" />
+    <Content Include="app\ai\providers\gemini.js" />
+    <Content Include="app\ai\providers\openai.js" />
+    <Content Include="app\system\auth.js" />
+    <Content Include="app\system\command-registry.js" />
+    <Content Include="app\system\game-admin.js" />
+    <Content Include="app\system\gendom-logic.js" />
+    <Content Include="scripts\ai-test.js" />
+    <Content Include="test\command-registry.test.js" />
+    <Content Include="test\gendom-logic.test.js" />
+    <Content Include="test\gendom-round.test.js" />
+    <Content Include="test\gendom4.test.js" />
+    <Content Include="docs\gendom.md" />
+    <Content Include="docs\slash-commands.md" />
+    <Content Include=".gitignore" />
+    <Content Include=".npmrc" />
+    <Content Include=".env.example" />
+  </ItemGroup>
+  <ItemGroup>
     <Folder Include="app\" />
     <Folder Include="app\modules\" />
     <Folder Include="app\system\" />
+    <Folder Include="app\ai\" />
+    <Folder Include="app\ai\providers\" />
+    <Folder Include="scripts\" />
+    <Folder Include="test\" />
+    <Folder Include="docs\" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />
 </Project>
