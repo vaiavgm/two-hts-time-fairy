@@ -61,7 +61,7 @@ All settings live in `.env` (see `.env.example`).
 | --- | --- |
 | `DISCORD_TOKEN` | Token of the production bot (TimeFairy) |
 | `FAKE_TOKEN` | Token of the test bot (FakeFairy) |
-| `TESTING` | **Set to any value** to run as FakeFairy. The check is "is the variable defined", so an empty `TESTING=` also switches to FakeFairy. Remove the line for production. |
+| `TESTING` | Set to `yes`, `true`, `1` or `on` (case-insensitive) to run as FakeFairy. Any other value, including `no` or empty, runs the production bot. |
 | `DATA_DIR` | Folder for small runtime files, default `./data`. Must survive restarts. |
 | `AI_*`, `ANTHROPIC_*`, `OPENAI_*`, `GEMINI_*` | Optional AI track comments, see below |
 
