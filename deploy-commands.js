@@ -45,7 +45,7 @@ const { REST, Routes } = require("discord.js");
 const commands = [];
 
 // do not load the skipped slash commands, but load all other modules
-const usedFiles = ["admin.js", "time.js"];
+const usedFiles = ["admin.js", "time.js", "version.js"];
 const moduleFiles = fs.readdirSync("./app/modules/").filter(file => file.endsWith(".js") && usedFiles.some(usedFile => file.startsWith(usedFile)));
 
 // Grab the SlashCommandBuilder::toJSON() output of each command's data for deployment

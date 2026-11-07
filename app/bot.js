@@ -74,6 +74,7 @@ const { Client, GatewayIntentBits, ActivityType, Events, DiscordjsErrorCodes, Me
 const { isTrackReporter } = require("./system/auth");
 const { scheduleComment, logStartup } = require("./ai");
 const { syncAllOnStartup } = require("./system/command-registry");
+const { rememberDeployedCommit } = require("./modules/version");
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -163,6 +164,7 @@ client.once(Events.ClientReady, () =>
         }
         console.log("[INFO] Bot is ready! Hello :)");
         logStartup();
+        rememberDeployedCommit();
         console.log(`[INFO] Installed in ${client.guilds.cache.size} server(s): ${client.guilds.cache.map(g => `${g.name} (${g.id})`).join(", ") || "none"}`);
         // Make every server's slash commands match what should exist (game commands only exist while a round runs)
         syncAllOnStartup(client).catch(err => console.error("Slash command sync failed:", err));
