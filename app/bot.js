@@ -91,11 +91,11 @@ require("dotenv").config();
 // ==========================================
 // 2. TOKEN & INITIALIZATION CONFIG
 // ==========================================
-const local_testing = process.env.TESTING;
+const local_testing = ["yes", "true", "1", "on"].includes((process.env.TESTING || "").trim().toLowerCase());
 let temp_token;
 const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
 
-if (local_testing !== undefined)
+if (local_testing)
 {
     temp_token = process.env.FAKE_TOKEN;
     console.log(`${localDate} [INFO] Launching fake bot. Remove 'TESTING=yes', to use production build.`);
