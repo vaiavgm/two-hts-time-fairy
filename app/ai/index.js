@@ -1,4 +1,5 @@
 const { pickLine, resolve } = require("./text-files");
+const { isSessionInProgress } = require("../system/session-window");
 
 const PROVIDERS = {
     anthropic: require("./providers/anthropic"),
@@ -84,6 +85,7 @@ function scheduleComment(message, trackName, authorName, durationSecs)
 {
     const cfg = settings();
     if (!cfg.enabled) return;
+    if (!isSessionInProgress()) return;
 
     const channelId = message.channel.id;
     clearTimeout(pending.get(channelId));
