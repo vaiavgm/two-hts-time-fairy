@@ -42,13 +42,14 @@ cp .env.example .env     # then fill in the tokens, see Configuration
 
 1. Set `DISCORD_TOKEN` (TimeFairy) and, if you want the test bot, `FAKE_TOKEN` (FakeFairy) in `.env`.
 2. Check `config.json` (production servers) and `config-local.json` (test servers). These hold the server IDs that `deploy-commands.js` registers commands on.
-3. Register the slash commands once, and again after command changes:
+3. Register the slash commands once on a new server (the bot leaves servers without any of its commands alone):
 
    ```bash
    node deploy-commands.js prod     # TimeFairy
    node deploy-commands.js test     # FakeFairy
-   node deploy-commands.js prod --clear-global   # also remove leftover global commands (duplicates)
    ```
+
+   After that, do not run it again: it resets each server to `/admin`, `/time` and `/version` and drops modules activated there. Changed commands are updated by the bot itself at every start, and leftover global commands (duplicates) are removed then too.
 
    The target is always given explicitly. The `TESTING` setting in `.env` does not decide which bot is deployed.
 4. Start the bot with `npm start`.

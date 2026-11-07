@@ -10,6 +10,7 @@
 //   setTemporary.
 // At startup, changed definitions of existing commands (descriptions, options) are pushed too; if a server
 // already matches, Discord is not called at all (so a restart loop does not hammer the API).
+// Global commands are never used; leftovers from old global registrations are removed at startup.
 
 const fs = require("fs");
 const path = require("path");
@@ -243,8 +244,28 @@ async function syncOnStartup(guild)
     await sync(guild, registered);
 }
 
+// Removes every global command of the bot (they would show up next to the per-server ones as duplicates); returns their names.
+// client: the logged-in Discord client
+async function clearGlobalCommands(client)
+{
+    const global = await client.application.commands.fetch();
+    if (global.size < 1) return [];
+    await client.application.commands.set([]);
+    return [...global.values()].map(command => command.name);
+}
+
 async function syncAllOnStartup(client)
 {
+    try
+    {
+        const removed = await clearGlobalCommands(client);
+        if (removed.length) console.log(`[INFO] Removed leftover global slash commands: ${removed.map(n => `/${n}`).join(", ")}`);
+    }
+    catch (error)
+    {
+        console.error("Could not remove leftover global slash commands:", error);
+    }
+
     for (const guild of client.guilds.cache.values())
     {
         try
@@ -258,4 +279,4 @@ async function syncAllOnStartup(client)
     }
 }
 
-module.exports = { ALWAYS_ON, moduleNames, setPermanent, setTemporary, syncOnStartup, syncAllOnStartup };
+module.exports = { ALWAYS_ON, clearGlobalCommands, moduleNames, setPermanent, setTemporary, syncOnStartup, syncAllOnStartup };

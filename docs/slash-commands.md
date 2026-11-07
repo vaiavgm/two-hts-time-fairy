@@ -24,4 +24,4 @@ At every startup the bot syncs each server that already has commands from it:
 
 ## Registering commands with Discord
 
-`node deploy-commands.js <prod|test>` registers `/admin` and `/time` from `config.json` (prod) or `config-local.json` (test). After `/admin` changed (one command with `app` and an autocompleted `action` instead of subcommands), re-register it once with `node deploy-commands.js prod`.
+`node deploy-commands.js <prod|test>` registers `/admin`, `/time` and `/version` on the servers in `config.json` (prod) or `config-local.json` (test). It is only needed once for a new server, because the startup sync skips servers without any of the bot's commands. Do not use it for updates: it replaces each server's list and drops activated modules. The bot pushes changed definitions (such as the one-command `/admin`) at every start and removes leftover global commands.
