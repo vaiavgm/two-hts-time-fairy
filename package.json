@@ -31,5 +31,8 @@
   },
   "overrides": {
     "minimatch": "^11.0.5"
+  },
+  "allowScripts": {
+    "canvas@3.2.3": true
   }
 }
