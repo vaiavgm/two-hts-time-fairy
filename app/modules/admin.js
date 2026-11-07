@@ -1,74 +1,111 @@
-const { MessageFlags, SlashCommandBuilder } = require("discord.js");
+const { InteractionContextType, MessageFlags, SlashCommandBuilder } = require("discord.js");
 const { isAdmin } = require("../system/auth");
+const { GAME_APPS, GAME_ACTIONS, isGameApp, mayControlGames, runGameAction } = require("../system/game-admin");
 const slash_functions = require("../system/slash-commands");
 
-module.exports = {
+// Modules whose slash command can be enabled or disabled per server. Games (GAME_APPS) are left out:
+// their command exists automatically while a round runs.
+const SLASH_MODULES = ["time", "tarot", "dice", "randomgif", "reactionrole"];
 
-    data: new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.")
-        .addStringOption(option =>
-            option.setName("application")
-                .setDescription("Which application do you want to control? (e.g. \"gendom3\")")
-                .setRequired(true).addChoices(
-                    { name: "gendom3", value: "gendom3" },
-                    { name: "time", value: "time" },
-                    { name: "tarot", value: "tarot" },
-                    { name: "dice", value: "dice" },
-                    { name: "randomgif", value: "randomgif" },
-                    { name: "reactionrole", value: "reactionrole" }))
-        .addStringOption(option =>
-            option.setName("command")
-                .setDescription("Which command do you want to execute? (e.g. \"start\")")
-                .setRequired(true).addChoices({ name: "start", value: "start" }, { name: "reset", value: "reset" }, { name: "Activate Slash Command", value: "activate" }, { name: "Deactivate Slash Command", value: "deactivate" }))
-        .addStringOption(option =>
-            option.setName("confirm")
-                .setDescription("This is only needed for critical commands. Type \"confirm\", if you are sure to execute the function.")
-                .setRequired(false)),
+function addSlashSubcommand(group, name, description)
+{
+    return group.addSubcommand(sub => sub.setName(name).setDescription(description)
+        .addStringOption(option => option.setName("module")
+            .setDescription("Which module's slash command?")
+            .setRequired(true)
+            .addChoices(...SLASH_MODULES.map(module => ({ name: module, value: module }))))
+        .addBooleanOption(option => option.setName("confirm")
+            .setDescription("Set to True to confirm")
+            .setRequired(true)));
+}
+
+const data = new SlashCommandBuilder().setName("admin").setDescription("Admin commands for the bot and its minigames.")
+    .setContexts(InteractionContextType.Guild);
+
+// /admin <game> start [minutes] | distribute | list [sources] | kick <user> | close
+for (const app of GAME_APPS)
+{
+    data.addSubcommandGroup(group =>
+    {
+        group.setName(app).setDescription(`Host controls for ${app}`);
+        for (const action of GAME_ACTIONS)
+        {
+            group.addSubcommand(sub =>
+            {
+                sub.setName(action.name).setDescription(action.description);
+                for (const option of action.booleanOptions || [])
+                {
+                    sub.addBooleanOption(o => o.setName(option.name).setDescription(option.description));
+                }
+                for (const option of action.integerOptions || [])
+                {
+                    sub.addIntegerOption(o => o.setName(option.name).setDescription(option.description));
+                }
+                for (const option of action.userOptions || [])
+                {
+                    sub.addUserOption(o => o.setName(option.name).setDescription(option.description).setRequired(Boolean(option.required)));
+                }
+                return sub;
+            });
+        }
+        return group;
+    });
+}
+
+// /admin slash activate | deactivate
+data.addSubcommandGroup(group =>
+{
+    group.setName("slash").setDescription("Enable or disable a module's slash command on this server");
+    addSlashSubcommand(group, "activate", "Add a module's slash command to this server");
+    addSlashSubcommand(group, "deactivate", "Remove a module's slash command from this server");
+    return group;
+});
+
+module.exports = {
+    data,
 
     async execute(interaction, user, commands)
     {
-        let result = "Admin rights required.";
-        if (!isAdmin(user))
+        const group = interaction.options.getSubcommandGroup();
+        const sub = interaction.options.getSubcommand();
+
+        // Game actions are open to moderators too; managing slash commands is for bot admins only
+        const allowed = isGameApp(group) ? mayControlGames(user, interaction.member) : isAdmin(user);
+        if (!allowed)
         {
             console.log(`[ADMIN] Denied ${user.username} (ID ${user.id})`);
-            await interaction.reply({ content: result, flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: "Admin rights required.", flags: MessageFlags.Ephemeral });
             return;
         }
 
-        const app = interaction.options.getString("application");
-        const cmd = interaction.options.getString("command");
-        // critical commands need a manual input of "confirm"
-        const confirm = interaction.options.getString("confirm") == "confirm";
+        console.log(`[ADMIN] ${user.username} (ID ${user.id}) executing [${group} ${sub}]`);
 
-        console.log(`[ADMIN] ${user.username} (ID ${user.id}) executing command [${cmd}] on app [${app}]`);
+        // Some actions (e.g. handing out gendom3 themes) take longer than the 3 seconds Discord allows for a first reply
+        await interaction.deferReply();
 
-        result = "Unknown app or command. Enabling/Disabling Slash Commands require the 'confirm' option as parameter.";
-
-        switch (cmd)
+        let result;
+        if (isGameApp(group))
         {
-        case "reset":
-        case "start":
-        {
-            const target = commands.get(app);
-            if (!target || typeof target[cmd] !== "function")
-            {
-                result = `The app **${app}** does not support the "${cmd}" command.`;
-                break;
-            }
-            result = await target[cmd]();
-            break;
+            result = await runGameAction(interaction, commands, group, sub);
         }
-        case "activate":
-            // break, if "confirm" has not been written
-            if (!confirm) break;
-            result = await slash_functions.addCommandsToGuild(interaction, app);
-            break;
-        case "deactivate":
-            // break, if "confirm" has not been written
-            if (!confirm) break;
-            result = await slash_functions.removeCommandsFromGuild(interaction, app);
-            break;
+        else if (!interaction.options.getBoolean("confirm"))
+        {
+            result = "Not confirmed: set the confirm option to True.";
+        }
+        else if (sub === "activate")
+        {
+            result = await slash_functions.addCommandsToGuild(interaction, interaction.options.getString("module"));
+        }
+        else
+        {
+            result = await slash_functions.removeCommandsFromGuild(interaction, interaction.options.getString("module"));
         }
 
-        await interaction.reply({ content: result });
+        const [reply, ...followUps] = [].concat(result);
+        await interaction.editReply(reply);
+        for (const followUp of followUps)
+        {
+            await interaction.followUp(followUp);
+        }
     },
 };

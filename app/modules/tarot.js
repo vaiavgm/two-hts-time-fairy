@@ -1,10 +1,8 @@
-/* eslint-disable no-unused-vars */
-
 class Participant
 {
     constructor(user)
     {
-        this.user = user;
+        this.userId = user.id;
         this.cards = [];
         this.arcanumTime = "";
     }
@@ -73,7 +71,7 @@ function tarot(user)
 
     for (const p of participants)
     {
-        if (p.user == user)
+        if (p.userId === user.id)
         {
             if (p.cards.length > 0)
             {
@@ -98,14 +96,14 @@ function tarot(user)
     return getTheme(arcanum, newParticipant.arcanumTime);
 }
 
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
-    data: new SlashCommandBuilder().setName("tarot").setDescription("shows your past, present, or future"),
+    data: new SlashCommandBuilder().setName("tarot").setDescription("Shows a tarot reading about your past, present or future (only you can see it)"),
 
     async execute(interaction, user)
     {
-        await user.send(tarot(user));
-        await interaction.reply("Check your PM for your theme!");
+        // Only the user who ran the command sees the reply, so no DM is needed (and closed DMs cannot break it)
+        await interaction.reply({ content: tarot(user), flags: MessageFlags.Ephemeral });
     },
 };

@@ -6,6 +6,7 @@ const {
     ButtonStyle,
     MessageFlags,
 } = require("discord.js");
+const { isModerator } = require("../system/auth");
 
 // Roles that members can toggle with the buttons. "role" is the role name on the server,
 // "emoji" is the (optional) name of a custom emoji on the server.
@@ -14,15 +15,12 @@ const ROLES = [
     { label: "Reason", role: "Reason", emoji: "reason" },
 ];
 
-const MODERATOR_ROLE = "@moderator";
 const CUSTOM_ID_PREFIX = "reactionrole:";
 
-function isModerator(member)
-{
-    return member && member.roles.cache.some(r => r.name === MODERATOR_ROLE);
-}
-
 module.exports = {
+    // Never added to a server on its own: it only exists where an admin ran /admin slash activate (see command-registry.js)
+    defaultEnabled: false,
+
     data: new SlashCommandBuilder().setName("reactionrole").setDescription("Posts a message where members can pick their roles"),
 
     async execute(interaction)

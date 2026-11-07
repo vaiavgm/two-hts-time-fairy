@@ -36,10 +36,12 @@
     <Content Include="app\modules\randomgif.js" />
     <Content Include="app\modules\react.js" />
     <Content Include="app\modules\gendom3.js" />
+    <Content Include="app\modules\gendom4.js" />
     <Content Include="app\modules\ping.js" />
     <Content Include="app\modules\reactionrole.js" />
     <Content Include="app\modules\tarot.js" />
     <Content Include="app\modules\time.js" />
+    <Content Include="app\system\gendom.js" />
     <Content Include="app\system\slash-commands.js" />
     <Content Include="config-local.json" />
     <Content Include="config.json" />
