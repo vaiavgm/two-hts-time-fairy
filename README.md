@@ -62,6 +62,7 @@ All settings live in `.env` (see `.env.example`).
 | `DISCORD_TOKEN` | Token of the production bot (TimeFairy) |
 | `FAKE_TOKEN` | Token of the test bot (FakeFairy) |
 | `TESTING` | **Set to any value** to run as FakeFairy. The check is "is the variable defined", so an empty `TESTING=` also switches to FakeFairy. Remove the line for production. |
+| `CHORUS_BOT_ID`, `CHORUS_CHANNEL_ID`, `CHORUS_RELAY_CHANNEL_ID` | Optional Chorus relay, see [Chorus relay](#chorus-relay) |
 | `DATA_DIR` | Folder for small runtime files, default `./data`. Must survive restarts. |
 | `AI_*`, `ANTHROPIC_*`, `OPENAI_*`, `GEMINI_*` | Optional AI track comments, see below |
 
@@ -97,6 +98,16 @@ If the run fails with HTTP 401 or 403 and an HTML page, the key is wrong or Clou
 To hide `/admin` from non-admins, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it. Then bot admins who are not server Administrators can only use it if a server admin allows them under Server Settings → Integrations.
 
 How the commands end up on each server is described in [docs/slash-commands.md](docs/slash-commands.md).
+
+## Chorus relay
+
+Chorus, the bot that runs the listening party, posts its "Now Playing" entries in its own server. Instead of people copying them to 2HTS, Time Fairy can copy them itself:
+
+1. Invite Time Fairy to the Chorus server. It only needs View Channel and Read Message History in the Chorus channel. It never posts there.
+2. Set `CHORUS_BOT_ID` (Chorus's user ID), `CHORUS_CHANNEL_ID` (where Chorus posts) and `CHORUS_RELAY_CHANNEL_ID` (the 2HTS channel to post into) in `.env`. Discord: enable Developer Mode, then right-click > Copy ID.
+3. Restart the bot. The startup log says whether the relay is on.
+
+Each entry is posted as `Now Playing: Track by Author [m:ss]` with the round and entry number below it. The 3:30 length warning and the AI comment follow in the 2HTS channel. Copying by hand still works. A track announced both ways in the same channel within its length is only handled once.
 
 ## AI track comments
 

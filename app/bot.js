@@ -72,6 +72,7 @@ const fs = require("fs");
 // Native v14 Import structure
 const { Client, GatewayIntentBits, ActivityType, Events, DiscordjsErrorCodes, MessageFlags } = require("discord.js");
 const { isTrackReporter } = require("./system/auth");
+const { parseNowPlaying, parseChorusEntry, formatRelay, relaySettings, isChorusPost, RecentTracks } = require("./system/now-playing");
 const { scheduleComment, logStartup } = require("./ai");
 const { syncAllOnStartup } = require("./system/command-registry");
 const { rememberDeployedCommit } = require("./modules/version");
@@ -164,6 +165,9 @@ client.once(Events.ClientReady, () =>
         }
         console.log("[INFO] Bot is ready! Hello :)");
         logStartup();
+        console.log(chorusRelay
+            ? `[CHORUS] Relaying Chorus (${chorusRelay.botId}) from channel ${chorusRelay.sourceChannelId} to ${chorusRelay.targetChannelId}.`
+            : "[CHORUS] Relay off (set CHORUS_BOT_ID, CHORUS_CHANNEL_ID and CHORUS_RELAY_CHANNEL_ID to turn it on).");
         rememberDeployedCommit();
         console.log(`[INFO] Installed in ${client.guilds.cache.size} server(s): ${client.guilds.cache.map(g => `${g.name} (${g.id})`).join(", ") || "none"}`);
         // Make every server's slash commands match what should exist (game commands only exist while a round runs)
@@ -257,70 +261,68 @@ client.on(Events.InteractionCreate, async interaction =>
 });
 
 // ==========================================
-// 5. SAFE MESSAGE CONTENT PARSER
+// 5. "NOW PLAYING" POSTS
 // ==========================================
+// Tracks come from people posting "Now Playing: Track by Author [m:ss]" on 2HTS, or from the Chorus bot in its own server,
+// whose entries are copied into a 2HTS channel when CHORUS_* is set. A track announced both ways is handled once.
+const TRACK_LENGTH_LIMIT_SECS = 210;
+const chorusRelay = relaySettings();
+const recentTracks = new RecentTracks();
+
+// Sends the 3:30 length warning if needed and schedules the AI comment, both in the message's channel.
+// message: the "Now Playing" message the replies go next to
+// track: as returned by parseNowPlaying
+function handleTrack(message, track)
+{
+    if (recentTracks.isRepeat(message.channel.id, track)) return;
+
+    if (track.durationSecs > TRACK_LENGTH_LIMIT_SECS)
+    {
+        const secsExceeded = track.durationSecs - TRACK_LENGTH_LIMIT_SECS;
+        setTimeout(() =>
+        {
+            message.channel.send({
+                content: `Hi **${track.author}**, please kindly respect the 3 minutes 30 seconds guideline. As it is customary, ${secsExceeded} seconds were deducted from your remaining lifetime.`,
+                allowedMentions: { parse: [] },
+            }).catch(err => console.error("Error sending guideline warning message:", err));
+        }, 1000);
+    }
+
+    console.log(`Now Playing: **${track.track}** by **${track.author}**!`);
+    scheduleComment(message, track.track, track.author, track.durationSecs);
+}
+
+// Copies a Chorus entry into the 2HTS relay channel and handles it there; nothing is ever sent in Chorus's server.
+async function relayChorusPost(message)
+{
+    const entry = parseChorusEntry(message);
+    if (!entry) return;
+    const target = await client.channels.fetch(chorusRelay.targetChannelId);
+    if (!target || !target.isTextBased())
+    {
+        console.error(`[CHORUS] Relay channel ${chorusRelay.targetChannelId} is not a text channel the bot can see.`);
+        return;
+    }
+    const relayed = await target.send({ content: formatRelay(entry), allowedMentions: { parse: [] } });
+    handleTrack(relayed, entry);
+}
+
 client.on(Events.MessageCreate, function(message)
 {
     try
     {
-        if (!message || !message.author || message.author.bot) return;
+        if (!message || !message.author) return;
 
-        if (!isTrackReporter(message.author)) return;
-
-        let parsedMessage = message.content;
-        if (!parsedMessage) return;
-
-        parsedMessage = parsedMessage.replace(/\*/g, "");
-
-        if (!parsedMessage.toLowerCase().startsWith("now playing: ")) return;
-        if (!parsedMessage.includes("[") || !parsedMessage.includes("]")) return;
-
-        parsedMessage = parsedMessage.replace(/Now Playing: /gi, "");
-
-        const splitOpen = parsedMessage.split("[");
-        if (splitOpen.length < 2) return;
-
-        const splitClose = splitOpen[1].split("]");
-        const trackDurationString = splitClose[0];
-
-        if (!trackDurationString.includes(":")) return;
-
-        const trackMins = parseInt(trackDurationString.split(":")[0]);
-        const trackSecs = parseInt(trackDurationString.split(":")[1]);
-        const trackDurationInSecs = trackMins * 60 + trackSecs;
-
-        if (isNaN(trackMins) || isNaN(trackSecs) || isNaN(trackDurationInSecs) || trackDurationInSecs <= 0) return;
-
-        const trackAndAuthor = splitOpen[0].split(/ by /g);
-        if (trackAndAuthor.length < 2) return;
-
-        const authorName = trackAndAuthor.pop().trim();
-        const trackName = trackAndAuthor.join(" by ").trim();
-
-        if (authorName.length === 0 || trackName.length === 0) return;
-
-        const trackDurationSecsLimit = 210;
-        if (trackDurationInSecs > trackDurationSecsLimit)
+        if (isChorusPost(message, chorusRelay))
         {
-            const secsExceeded = trackDurationInSecs - trackDurationSecsLimit;
-
-            setTimeout(() =>
-            {
-                try
-                {
-                    message.channel.send(`Hi **${authorName}**, please kindly respect the 3 minutes 30 seconds guideline. As it is customary, ${secsExceeded} seconds were deducted from your remaining lifetime.`)
-                        .catch(err => console.error("Error sending guideline warning message:", err));
-                }
-                catch (timeoutErr)
-                {
-                    console.error("Error within message submission timeout scope:", timeoutErr);
-                }
-            }, 1000);
+            relayChorusPost(message).catch(err => console.error("[CHORUS] Could not relay the post:", err));
+            return;
         }
 
-        console.log(`Now Playing: **${trackName}** by **${authorName}**!`);
+        if (message.author.bot || !isTrackReporter(message.author)) return;
 
-        scheduleComment(message, trackName, authorName, trackDurationInSecs);
+        const track = parseNowPlaying(message.content);
+        if (track) handleTrack(message, track);
     }
     catch (err)
     {
