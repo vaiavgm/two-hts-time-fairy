@@ -89,7 +89,7 @@ require("dotenv").config();
 // 2. TOKEN & INITIALIZATION CONFIG
 // ==========================================
 const local_testing = process.env.TESTING;
-let temp_token = "";
+let temp_token;
 const localDate = new Date().toLocaleString("en-US", { timeZone: "Europe/Vienna" });
 
 if (local_testing !== undefined)

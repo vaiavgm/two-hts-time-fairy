@@ -20,13 +20,16 @@
     "gif-encoder-2": "1.0.5"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "@stylistic/eslint-plugin": "^5.10.0",
-    "eslint": "^9.39.5",
+    "eslint": "^10.14.0",
     "globals": "^17.14.0"
   },
   "engines": {
-    "node": ">=22.0.0",
-    "npm": ">=10.0.0"
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.5"
   }
 }

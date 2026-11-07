@@ -20,7 +20,7 @@ Module names (used with `/admin slash`) are `time`, `dice`, `tarot`, `randomgif`
 
 ## Requirements
 
-- **Node.js 22 or newer** and npm 9 or newer.
+- **Node.js 24 (LTS) or newer** and npm 11 or newer.
 - A Discord application with a bot user. The **Message Content** intent must be enabled in the Discord developer portal.
 - `canvas` (used for GIFs) ships prebuilt binaries for common platforms. On other platforms it compiles from source and needs the Cairo development libraries.
 
