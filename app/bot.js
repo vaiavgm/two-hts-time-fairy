@@ -73,6 +73,7 @@ const fs = require("fs");
 const { Client, GatewayIntentBits, ActivityType, Events, DiscordjsErrorCodes, MessageFlags } = require("discord.js");
 const { isTrackReporter } = require("./system/auth");
 const { parseNowPlaying, parseChorusEntry, formatRelay, relaySettings, isChorusPost, RecentTracks } = require("./system/now-playing");
+const trackChannels = require("./system/track-channels").defaultStore;
 const { scheduleComment, logStartup } = require("./ai");
 const { syncAllOnStartup } = require("./system/command-registry");
 const { rememberDeployedCommit } = require("./modules/version");
@@ -166,8 +167,8 @@ client.once(Events.ClientReady, () =>
         console.log("[INFO] Bot is ready! Hello :)");
         logStartup();
         console.log(chorusRelay
-            ? `[CHORUS] Relaying Chorus (${chorusRelay.botId}) from channel ${chorusRelay.sourceChannelId} to ${chorusRelay.targetChannelId}.`
-            : "[CHORUS] Relay off (set CHORUS_BOT_ID, CHORUS_CHANNEL_ID and CHORUS_RELAY_CHANNEL_ID to turn it on).");
+            ? `[CHORUS] Relaying Chorus (${chorusRelay.botId}) from channel ${chorusRelay.sourceChannelId} to ${trackChannels.list().length} registered channel(s).`
+            : "[CHORUS] Relay off (set CHORUS_BOT_ID and CHORUS_CHANNEL_ID to turn it on).");
         rememberDeployedCommit();
         console.log(`[INFO] Installed in ${client.guilds.cache.size} server(s): ${client.guilds.cache.map(g => `${g.name} (${g.id})`).join(", ") || "none"}`);
         // Make every server's slash commands match what should exist (game commands only exist while a round runs)
@@ -263,8 +264,8 @@ client.on(Events.InteractionCreate, async interaction =>
 // ==========================================
 // 5. "NOW PLAYING" POSTS
 // ==========================================
-// Tracks come from people posting "Now Playing: Track by Author [m:ss]" on 2HTS, or from the Chorus bot in its own server,
-// whose entries are copied into a 2HTS channel when CHORUS_* is set. A track announced both ways is handled once.
+// Tracks come from people posting "Now Playing: Track by Author [m:ss]", or from the Chorus bot in its own server (when CHORUS_* is set).
+// The bot only ever posts in channels registered with /admin app:nowplaying action:register. A track announced both ways is handled once.
 const TRACK_LENGTH_LIMIT_SECS = 210;
 const chorusRelay = relaySettings();
 const recentTracks = new RecentTracks();
@@ -292,19 +293,26 @@ function handleTrack(message, track)
     scheduleComment(message, track.track, track.author, track.durationSecs);
 }
 
-// Copies a Chorus entry into the 2HTS relay channel and handles it there; nothing is ever sent in Chorus's server.
+// Copies a Chorus entry into every registered channel and handles it there; nothing is sent in Chorus's own channel.
 async function relayChorusPost(message)
 {
     const entry = parseChorusEntry(message);
     if (!entry) return;
-    const target = await client.channels.fetch(chorusRelay.targetChannelId);
-    if (!target || !target.isTextBased())
+    for (const channelId of trackChannels.list())
     {
-        console.error(`[CHORUS] Relay channel ${chorusRelay.targetChannelId} is not a text channel the bot can see.`);
-        return;
+        if (channelId === message.channelId) continue;
+        try
+        {
+            const target = await client.channels.fetch(channelId);
+            if (!target || !target.isTextBased()) throw new Error("not a text channel");
+            const relayed = await target.send({ content: formatRelay(entry), allowedMentions: { parse: [] } });
+            handleTrack(relayed, entry);
+        }
+        catch (error)
+        {
+            console.error(`[CHORUS] Could not post in registered channel ${channelId}:`, error.message);
+        }
     }
-    const relayed = await target.send({ content: formatRelay(entry), allowedMentions: { parse: [] } });
-    handleTrack(relayed, entry);
 }
 
 client.on(Events.MessageCreate, function(message)
@@ -319,7 +327,7 @@ client.on(Events.MessageCreate, function(message)
             return;
         }
 
-        if (message.author.bot || !isTrackReporter(message.author)) return;
+        if (message.author.bot || !isTrackReporter(message.author) || !trackChannels.has(message.channelId)) return;
 
         const track = parseNowPlaying(message.content);
         if (track) handleTrack(message, track);

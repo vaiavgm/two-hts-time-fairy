@@ -55,10 +55,10 @@ test("formatRelay escapes markdown in names", () =>
     assert.ok(np.formatRelay({ track: "a_b_", author: "*x*", durationSecs: 61 }).includes("a\\_b\\_"));
 });
 
-test("the relay is on only with all three IDs and only reacts to Chorus in the watched channel", () =>
+test("the relay is on only with both IDs and only reacts to Chorus in the watched channel", () =>
 {
-    assert.strictEqual(np.relaySettings({ CHORUS_BOT_ID: "chorus", CHORUS_CHANNEL_ID: "source" }), null);
-    const relay = np.relaySettings({ CHORUS_BOT_ID: "chorus", CHORUS_CHANNEL_ID: "source", CHORUS_RELAY_CHANNEL_ID: "target" });
+    assert.strictEqual(np.relaySettings({ CHORUS_BOT_ID: "chorus" }), null);
+    const relay = np.relaySettings({ CHORUS_BOT_ID: "chorus", CHORUS_CHANNEL_ID: "source" });
     assert.ok(np.isChorusPost(chorusPost(), relay));
     assert.ok(!np.isChorusPost({ ...chorusPost(), channelId: "elsewhere" }, relay));
     assert.ok(!np.isChorusPost({ ...chorusPost(), author: { id: "someone" } }, relay));

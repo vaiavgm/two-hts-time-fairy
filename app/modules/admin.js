@@ -1,10 +1,12 @@
 const { InteractionContextType, MessageFlags, SlashCommandBuilder } = require("discord.js");
 const { isAdmin } = require("../system/auth");
-const { GAME_APPS, GAME_ACTIONS, isGameApp, mayControlGames, runGameAction } = require("../system/game-admin");
+const { GAME_APPS, GAME_ACTIONS, mayControlGames, runGameAction } = require("../system/game-admin");
 const slash_functions = require("../system/slash-commands");
+const { relaySettings } = require("../system/now-playing");
+const trackChannels = require("../system/track-channels");
 
 // One /admin command: pick an app, then an action from the list for that app, then only the options that action reads.
-// Games (GAME_APPS) get host actions; the other modules can have their slash command switched on or off per server.
+// Games get host actions, nowplaying registers channels for track posts, the other modules get their slash command switched per server.
 
 const SLASH_MODULES = ["time", "tarot", "dice", "randomgif", "reactionrole"];
 
@@ -13,9 +15,16 @@ const SLASH_ACTIONS = [
     { name: "deactivate", description: "Remove this module's slash command from this server", required: ["confirm"] },
 ];
 
+const NOWPLAYING_ACTIONS = [
+    { name: "register", description: "Post Chorus entries, length warnings and AI comments in this channel" },
+    { name: "unregister", description: "Stop all Now Playing posts in this channel" },
+    { name: "channels", description: "List this server's registered Now Playing channels" },
+];
+
 const APPS = [
-    ...GAME_APPS.map(name => ({ name, label: `${name} (game host controls)`, actions: GAME_ACTIONS })),
-    ...SLASH_MODULES.map(name => ({ name, label: `${name} (slash command on/off)`, actions: SLASH_ACTIONS })),
+    ...GAME_APPS.map(name => ({ name, kind: "game", label: `${name} (game host controls)`, actions: GAME_ACTIONS })),
+    { name: "nowplaying", kind: "nowplaying", label: "nowplaying (channels for Chorus entries and track comments)", actions: NOWPLAYING_ACTIONS },
+    ...SLASH_MODULES.map(name => ({ name, kind: "slash", label: `${name} (slash command on/off)`, actions: SLASH_ACTIONS })),
 ];
 
 const OPTION_NAMES = ["minutes", "sources", "user", "confirm"];
@@ -48,7 +57,7 @@ function findApp(name)
 function suggestActions(appName, typed = "")
 {
     const app = findApp(appName);
-    const actions = app ? app.actions : [...GAME_ACTIONS, ...SLASH_ACTIONS];
+    const actions = app ? app.actions : [...GAME_ACTIONS, ...NOWPLAYING_ACTIONS, ...SLASH_ACTIONS];
     const needle = typed.trim().toLowerCase();
     return actions
         .filter(action => !needle || action.name.includes(needle) || action.description.toLowerCase().includes(needle))
@@ -80,8 +89,28 @@ function missingText(actionName, missing)
         : `\`${actionName}\` needs the \`${name}\` option.`).join("\n");
 }
 
+// Runs a nowplaying action in the interaction's channel and returns the reply text; register and unregister save the channel list.
+// action: "register", "unregister" or "channels"
+async function runNowPlayingAction(interaction, action, store = trackChannels.defaultStore)
+{
+    const here = `<#${interaction.channelId}>`;
+    if (action === "channels")
+    {
+        const ids = store.list(interaction.guildId);
+        return ids.length ? `Now Playing channels on this server: ${ids.map(id => `<#${id}>`).join(", ")}` : "No Now Playing channel is registered on this server.";
+    }
+    if (action === "unregister")
+    {
+        return await store.remove(interaction.channelId) ? `${here} no longer gets Now Playing posts.` : `${here} was not registered.`;
+    }
+    if (!await store.add(interaction.channelId, interaction.guildId)) return `${here} is already registered.`;
+    const relayNote = relaySettings() ? "" : "\n-# The Chorus relay is not set up on this bot, so only Now Playing posts typed here are handled.";
+    return `${here} now gets Chorus entries, the 3:30 length warning and AI comments during the party.${relayNote}`;
+}
+
 module.exports = {
     data,
+    runNowPlayingAction,
     suggestActions,
     checkOptions,
 
@@ -108,8 +137,8 @@ module.exports = {
             return;
         }
 
-        // Game actions are open to moderators too; managing slash commands is for bot admins only
-        const allowed = isGameApp(app.name) ? mayControlGames(user, interaction.member) : isAdmin(user);
+        // Game actions are open to moderators too; everything else is for bot admins only
+        const allowed = app.kind === "game" ? mayControlGames(user, interaction.member) : isAdmin(user);
         if (!allowed)
         {
             console.log(`[ADMIN] Denied ${user.username} (ID ${user.id})`);
@@ -137,9 +166,13 @@ module.exports = {
         await interaction.deferReply();
 
         let result;
-        if (isGameApp(app.name))
+        if (app.kind === "game")
         {
             result = await runGameAction(interaction, commands, app.name, action.name);
+        }
+        else if (app.kind === "nowplaying")
+        {
+            result = await runNowPlayingAction(interaction, action.name);
         }
         else if (action.name === "activate")
         {

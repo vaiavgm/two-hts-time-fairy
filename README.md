@@ -62,7 +62,7 @@ All settings live in `.env` (see `.env.example`).
 | `DISCORD_TOKEN` | Token of the production bot (TimeFairy) |
 | `FAKE_TOKEN` | Token of the test bot (FakeFairy) |
 | `TESTING` | **Set to any value** to run as FakeFairy. The check is "is the variable defined", so an empty `TESTING=` also switches to FakeFairy. Remove the line for production. |
-| `CHORUS_BOT_ID`, `CHORUS_CHANNEL_ID`, `CHORUS_RELAY_CHANNEL_ID` | Optional Chorus relay, see [Chorus relay](#chorus-relay) |
+| `CHORUS_BOT_ID`, `CHORUS_CHANNEL_ID` | Optional Chorus relay, see [Now Playing channels and Chorus relay](#now-playing-channels-and-chorus-relay) |
 | `DATA_DIR` | Folder for small runtime files, default `./data`. Must survive restarts. |
 | `AI_*`, `ANTHROPIC_*`, `OPENAI_*`, `GEMINI_*` | Optional AI track comments, see below |
 
@@ -94,20 +94,27 @@ If the run fails with HTTP 401 or 403 and an HTML page, the key is wrong or Clou
 
 - `/admin app:<module> action:activate|deactivate confirm:True` enables or disables a module's slash command on the current server. Bot admins only.
 - `/admin app:gendom3 action:…` and `/admin app:gendom4 action:…` run the party games, see [docs/gendom.md](docs/gendom.md).
+- `/admin app:nowplaying action:register|unregister|channels` chooses the channels that get Chorus entries, length warnings and AI comments, see [Now Playing channels and Chorus relay](#now-playing-channels-and-chorus-relay). Bot admins only.
 
 To hide `/admin` from non-admins, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it. Then bot admins who are not server Administrators can only use it if a server admin allows them under Server Settings → Integrations.
 
 How the commands end up on each server is described in [docs/slash-commands.md](docs/slash-commands.md).
 
-## Chorus relay
+## Now Playing channels and Chorus relay
 
-Chorus, the bot that runs the listening party, posts its "Now Playing" entries in its own server. Instead of people copying them to 2HTS, Time Fairy can copy them itself:
+The bot only posts track-related messages (Chorus entries, the 3:30 length warning, AI comments) in channels a bot admin registered. Every other channel and server stays quiet, even while a party runs.
+
+- `/admin app:nowplaying action:register` registers the current channel, `unregister` removes it, `channels` lists the server's registered channels. Bot admins only.
+- The list is stored in `DATA_DIR/now-playing-channels.json`.
+- "Now Playing: Track by Author [m:ss]" posts typed by track reporters (see `app/system/auth.js`) are only handled in registered channels.
+
+Chorus, the bot that runs the listening party, posts its entries in its own server. Instead of people copying them, Time Fairy can copy them itself:
 
 1. Invite Time Fairy to the Chorus server. It only needs View Channel and Read Message History in the Chorus channel. It never posts there.
-2. Set `CHORUS_BOT_ID` (Chorus's user ID), `CHORUS_CHANNEL_ID` (where Chorus posts) and `CHORUS_RELAY_CHANNEL_ID` (the 2HTS channel to post into) in `.env`. Discord: enable Developer Mode, then right-click > Copy ID.
-3. Restart the bot. The startup log says whether the relay is on.
+2. Set `CHORUS_BOT_ID` (Chorus's user ID) and `CHORUS_CHANNEL_ID` (where Chorus posts) in `.env`. Discord: enable Developer Mode, then right-click > Copy ID.
+3. Restart the bot. The startup log says whether the relay is on and how many channels are registered.
 
-Each entry is posted as `Now Playing: Track by Author [m:ss]` with the round and entry number below it. The 3:30 length warning and the AI comment follow in the 2HTS channel. Copying by hand still works. A track announced both ways in the same channel within its length is only handled once.
+Each entry is posted into every registered channel as `Now Playing: Track by Author [m:ss]` with the round and entry number below it. The length warning and the AI comment follow there. Copying by hand still works. A track announced both ways in the same channel within its length is only handled once.
 
 ## AI track comments
 

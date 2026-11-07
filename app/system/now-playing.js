@@ -1,5 +1,5 @@
 // Reads "Now Playing: Track by Author [m:ss]" posts, typed by people or posted by the Chorus bot, and builds the relay line for 2HTS.
-// Chorus posts in another server; when the relay is configured, the bot copies each of its entries into a 2HTS channel.
+// Chorus posts in another server; when the relay is configured, the bot copies each entry into the channels registered in track-channels.js.
 
 const { escapeMarkdown } = require("discord.js");
 
@@ -65,14 +65,13 @@ function formatRelay(entry)
     return `${line}\n-# ${details}`;
 }
 
-// Relay settings from the environment, or null when the relay is not fully configured.
-// env: environment variables, CHORUS_BOT_ID, CHORUS_CHANNEL_ID and CHORUS_RELAY_CHANNEL_ID
+// Relay settings from the environment, or null when the relay is not configured.
+// env: environment variables CHORUS_BOT_ID and CHORUS_CHANNEL_ID
 function relaySettings(env = process.env)
 {
     const botId = (env.CHORUS_BOT_ID || "").trim();
     const sourceChannelId = (env.CHORUS_CHANNEL_ID || "").trim();
-    const targetChannelId = (env.CHORUS_RELAY_CHANNEL_ID || "").trim();
-    return botId && sourceChannelId && targetChannelId ? { botId, sourceChannelId, targetChannelId } : null;
+    return botId && sourceChannelId ? { botId, sourceChannelId } : null;
 }
 
 // True if the message is a Chorus post in the watched channel.

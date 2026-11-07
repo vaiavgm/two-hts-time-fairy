@@ -59,7 +59,7 @@ test("/admin is one command with app and action instead of a subcommand per acti
     assert.deepStrictEqual(names, ["app", "action", "minutes", "sources", "user", "confirm"]);
     assert.ok(json.options.every(o => o.type !== 1 && o.type !== 2), "no subcommands or groups");
     assert.strictEqual(json.options[1].autocomplete, true);
-    assert.deepStrictEqual(json.options[0].choices.map(c => c.value), ["gendom3", "gendom4", "time", "tarot", "dice", "randomgif", "reactionrole"]);
+    assert.deepStrictEqual(json.options[0].choices.map(c => c.value), ["gendom3", "gendom4", "nowplaying", "time", "tarot", "dice", "randomgif", "reactionrole"]);
 });
 
 test("action suggestions follow the chosen app and the typed text", () =>
@@ -67,7 +67,7 @@ test("action suggestions follow the chosen app and the typed text", () =>
     assert.deepStrictEqual(admin.suggestActions("gendom3").map(c => c.value), ["start", "distribute", "list", "kick", "close"]);
     assert.deepStrictEqual(admin.suggestActions("tarot").map(c => c.value), ["activate", "deactivate"]);
     assert.deepStrictEqual(admin.suggestActions("gendom4", "ki").map(c => c.value), ["kick"]);
-    assert.strictEqual(admin.suggestActions(null).length, 7);
+    assert.strictEqual(admin.suggestActions(null).length, 10);
     assert.ok(admin.suggestActions("gendom3").every(c => c.name.length <= 100));
 });
 
