@@ -73,16 +73,16 @@ function sorted(list)
 
 test("startup sync keeps permanent commands, drops game commands and unknown leftovers", async () =>
 {
-    const guild = fakeGuild("g1", ["admin", "time", "roll", "gendom3", "chatgpt"]);
+    const guild = fakeGuild("g1", ["admin", "version", "time", "roll", "gendom3", "chatgpt"]);
     await registry.syncOnStartup(guild);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time", "version"]);
 });
 
 test("startup sync always keeps /admin, even if it was missing", async () =>
 {
     const guild = fakeGuild("g2", ["time"]);
     await registry.syncOnStartup(guild);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "time"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "time", "version"]);
 });
 
 test("startup sync leaves servers without any of the bot's commands alone", async () =>
@@ -94,47 +94,47 @@ test("startup sync leaves servers without any of the bot's commands alone", asyn
 
 test("startup sync does not call Discord when the server already matches", async () =>
 {
-    const guild = upToDateGuild("g12", ["admin", "time"]);
+    const guild = upToDateGuild("g12", ["admin", "version", "time"]);
     await registry.syncOnStartup(guild);
     assert.strictEqual(guild.setCalls, 0);
 });
 
 test("startup sync updates a command whose definition changed", async () =>
 {
-    const guild = upToDateGuild("g13", ["admin", "time"], "time");
+    const guild = upToDateGuild("g13", ["admin", "version", "time"], "time");
     await registry.syncOnStartup(guild);
     assert.strictEqual(guild.setCalls, 1);
 });
 
 test("permanent commands can be added and removed", async () =>
 {
-    const guild = fakeGuild("g4", ["admin"]);
+    const guild = fakeGuild("g4", ["admin", "version"]);
     await registry.setPermanent(guild, "tarot", true);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "tarot"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "tarot", "version"]);
     await registry.setPermanent(guild, "tarot", false);
-    assert.deepStrictEqual(guild.current, ["admin"]);
+    assert.deepStrictEqual(guild.current, ["admin", "version"]);
 });
 
 test("a game command exists only while a round runs, per server", async () =>
 {
-    const guild = fakeGuild("g5", ["admin", "time"]);
+    const guild = fakeGuild("g5", ["admin", "version", "time"]);
     await registry.syncOnStartup(guild);
     const interaction = channelId => ({ channelId, guildId: guild.id, guild });
 
     await gendom3.start(interaction("c1"));
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "gendom3", "time"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "gendom3", "time", "version"]);
 
     await gendom3.start(interaction("c2"));
     await gendom3.close(interaction("c1"));
     assert.ok(guild.current.includes("gendom3"), "still needed by the round in channel c2");
 
     await gendom3.close(interaction("c2"));
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "time"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "time", "version"]);
 });
 
 test("a failing Discord call is reported, not thrown", async () =>
 {
-    const guild = fakeGuild("g6", ["admin"]);
+    const guild = fakeGuild("g6", ["admin", "version"]);
     guild.commands.set = async () =>
     {
         throw new Error("Discord says no");
@@ -154,35 +154,35 @@ test("a failing Discord call is reported, not thrown", async () =>
 
 test("startup sync adds default commands that a bot update introduced", async () =>
 {
-    const guild = fakeGuild("g8", ["admin", "roll"]);
+    const guild = fakeGuild("g8", ["admin", "version", "roll"]);
     await registry.syncOnStartup(guild);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time", "version"]);
 });
 
 test("a default command an admin switched off stays off, also after a restart", async () =>
 {
-    const guild = fakeGuild("g9", ["admin", "time", "roll"]);
+    const guild = fakeGuild("g9", ["admin", "version", "time", "roll"]);
     await registry.syncOnStartup(guild);
     await registry.setPermanent(guild, "time", false);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "version"]);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(optOutFile, "utf8")).g9, ["time"]);
 
     const afterRestart = restartedRegistry();
     await afterRestart.syncOnStartup(guild);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll"], "time must not come back");
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "version"], "time must not come back");
 
     await afterRestart.setPermanent(guild, "time", true);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time", "version"]);
     assert.strictEqual(JSON.parse(fs.readFileSync(optOutFile, "utf8")).g9, undefined);
 });
 
 test("switching off a non-default command does not need the opt-out file", async () =>
 {
     fs.rmSync(optOutFile, { force: true });
-    const guild = fakeGuild("g10", ["admin", "time", "roll"]);
+    const guild = fakeGuild("g10", ["admin", "version", "time", "roll"]);
     await registry.syncOnStartup(guild);
     await registry.setPermanent(guild, "dice", false);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "time"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "time", "version"]);
     assert.strictEqual(fs.existsSync(optOutFile), false);
 });
 
@@ -194,9 +194,9 @@ test("an unreadable opt-out file means starting without opt-outs", async () =>
     try
     {
         const afterRestart = restartedRegistry();
-        const guild = fakeGuild("g11", ["admin", "roll"]);
+        const guild = fakeGuild("g11", ["admin", "version", "roll"]);
         await afterRestart.syncOnStartup(guild);
-        assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time"]);
+        assert.deepStrictEqual(sorted(guild.current), ["admin", "roll", "time", "version"]);
     }
     finally
     {
@@ -218,7 +218,7 @@ test("startup sync leaves a server alone when unknown commands might belong to a
     }
     const freshRegistry = require("../app/system/command-registry");
 
-    const guild = fakeGuild("g7", ["admin", "randomgif", "time"]);
+    const guild = fakeGuild("g7", ["admin", "version", "randomgif", "time"]);
     const originalError = console.error;
     console.error = () => null;
     try
@@ -231,7 +231,7 @@ test("startup sync leaves a server alone when unknown commands might belong to a
         Module._load = stubbedLoad;
     }
     assert.strictEqual(guild.setCalls, 0);
-    assert.deepStrictEqual(sorted(guild.current), ["admin", "randomgif", "time"]);
+    assert.deepStrictEqual(sorted(guild.current), ["admin", "randomgif", "time", "version"]);
 });
 
 test("/reactionrole is never added on its own, only by an explicit /admin slash activate", async () =>
@@ -239,7 +239,7 @@ test("/reactionrole is never added on its own, only by an explicit /admin slash 
     const reactionrole = require("../app/modules/reactionrole");
     assert.strictEqual(reactionrole.defaultEnabled, false);
 
-    const guild = fakeGuild("g20", ["admin", "time"]);
+    const guild = fakeGuild("g20", ["admin", "version", "time"]);
     await registry.syncOnStartup(guild);
     await registry.syncOnStartup(guild);
     assert.ok(!guild.current.includes("reactionrole"), "not added by the startup sync");

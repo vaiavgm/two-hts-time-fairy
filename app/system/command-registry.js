@@ -1,7 +1,7 @@
 // Decides which slash commands each server has, and makes Discord match (declarative: describe what should
 // exist, then replace the server's command list in one call with guild.commands.set).
 //
-// - "admin" is always registered, otherwise the bot owner could lock themselves out.
+// - "admin" is always registered, otherwise the bot owner could lock themselves out. "version" is too (admins only).
 // - Default modules (export `defaultEnabled: true`, e.g. time) are added at startup, unless an admin switched
 //   them off on that server with /admin slash deactivate. Those opt-outs are kept in a small JSON file.
 // - Other permanent modules are chosen with /admin slash activate|deactivate. Discord remembers them, they are
@@ -16,7 +16,7 @@ const path = require("path");
 const { GAME_APPS } = require("./game-admin");
 
 const MODULES_DIR = path.join(__dirname, "..", "modules");
-const ALWAYS_ON = ["admin"];
+const ALWAYS_ON = ["admin", "version"];
 const OPT_OUT_FILE = "command-opt-outs.json";
 
 // guildId -> Set of module names
