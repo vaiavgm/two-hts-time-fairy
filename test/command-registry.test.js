@@ -234,7 +234,7 @@ test("startup sync leaves a server alone when unknown commands might belong to a
     assert.deepStrictEqual(sorted(guild.current), ["admin", "randomgif", "time", "version"]);
 });
 
-test("/reactionrole is never added on its own, only by an explicit /admin slash activate", async () =>
+test("/reactionrole is never added on its own, only by an explicit /admin action:activate", async () =>
 {
     const reactionrole = require("../app/modules/reactionrole");
     assert.strictEqual(reactionrole.defaultEnabled, false);

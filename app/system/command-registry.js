@@ -3,8 +3,8 @@
 //
 // - "admin" is always registered, otherwise the bot owner could lock themselves out. "version" is too (admins only).
 // - Default modules (export `defaultEnabled: true`, e.g. time) are added at startup, unless an admin switched
-//   them off on that server with /admin slash deactivate. Those opt-outs are kept in a small JSON file.
-// - Other permanent modules are chosen with /admin slash activate|deactivate. Discord remembers them, they are
+//   them off on that server with /admin action:deactivate. Those opt-outs are kept in a small JSON file.
+// - Other permanent modules are chosen with /admin action:activate|deactivate. Discord remembers them, they are
 //   re-read from it at startup.
 // - Game modules (see GAME_APPS in game-admin.js) have their command only while a round runs: the game calls
 //   setTemporary.

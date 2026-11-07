@@ -16,7 +16,7 @@ A Discord bot for the 2HTS community. It is a reboot of the discontinued 2HTSTim
 
 Optionally the bot also comments on "Now Playing" posts with AI, see [AI track comments](#ai-track-comments).
 
-Module names (used with `/admin slash`) are `time`, `dice`, `tarot`, `randomgif`, `reactionrole`. The `dice` module provides the `/roll` command. `ping` and `react` exist as modules but are not enabled on servers by default.
+Module names (the `app` option of `/admin`) are `time`, `dice`, `tarot`, `randomgif`, `reactionrole`. The `dice` module provides the `/roll` command. `ping` and `react` exist as modules but are not enabled on servers by default.
 
 ## Requirements
 
@@ -89,8 +89,10 @@ If the run fails with HTTP 401 or 403 and an HTML page, the key is wrong or Clou
 
 `/admin` is visible to everybody in the command picker. Its actions are limited to bot admins, server Administrators and members with the `@moderator` role.
 
-- `/admin slash activate|deactivate module:<module> confirm:True` enables or disables a module's slash command on the current server. Bot admins only.
-- `/admin gendom3 …` and `/admin gendom4 …` run the party games, see [docs/gendom.md](docs/gendom.md).
+`/admin` is a single command: pick `app`, then `action`. The `action` list only shows what the chosen app supports. The remaining options (`minutes`, `sources`, `user`, `confirm`) say in their description which action reads them. Options an action does not read are ignored, and the bot says so privately.
+
+- `/admin app:<module> action:activate|deactivate confirm:True` enables or disables a module's slash command on the current server. Bot admins only.
+- `/admin app:gendom3 action:…` and `/admin app:gendom4 action:…` run the party games, see [docs/gendom.md](docs/gendom.md).
 
 To hide `/admin` from non-admins, set `setDefaultMemberPermissions(PermissionFlagsBits.Administrator)` on it. Then bot admins who are not server Administrators can only use it if a server admin allows them under Server Settings → Integrations.
 

@@ -18,7 +18,7 @@ const ROLES = [
 const CUSTOM_ID_PREFIX = "reactionrole:";
 
 module.exports = {
-    // Never added to a server on its own: it only exists where an admin ran /admin slash activate (see command-registry.js)
+    // Never added to a server on its own: it only exists where an admin ran /admin app:reactionrole action:activate (see command-registry.js)
     defaultEnabled: false,
 
     data: new SlashCommandBuilder().setName("reactionrole").setDescription("Posts a message where members can pick their roles"),

@@ -3,7 +3,7 @@
 //
 // Players:  /<game> join <slot options>   (join, or change your entry before the themes are handed out)
 //           /<game> theme                 (show your theme again, privately)
-// Hosts:    /admin <game> start [minutes] | distribute | list [sources] | kick <user> | close   (see game-admin.js)
+// Hosts:    /admin app:<game> action:start [minutes] | distribute | list [sources] | kick <user> | close   (see game-admin.js)
 //
 // All replies to players are ephemeral (no DMs). One round per channel and game, kept in memory only:
 // a bot restart ends every round.

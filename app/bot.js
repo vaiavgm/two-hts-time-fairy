@@ -200,6 +200,24 @@ client.on(Events.InteractionCreate, async interaction =>
         return;
     }
 
+    // Suggestions while typing an option, e.g. the actions of the app chosen in /admin
+    if (interaction.isAutocomplete())
+    {
+        try
+        {
+            const command = interaction.client.commands.get(interaction.commandName);
+            if (command && typeof command.autocomplete === "function")
+            {
+                await command.autocomplete(interaction);
+            }
+        }
+        catch (error)
+        {
+            console.error(`Error autocompleting ${interaction.commandName}:`, error);
+        }
+        return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     try
