@@ -103,6 +103,13 @@ function viennaWallToInstant(year, month, day, hour, minute, second)
 const COMPO_START = { hour: 21, minute: 0 };
 const COMPO_END = { hour: 23, minute: 16 };
 
+// Bracketed footer line naming the following week's compo, shown while this week's compo runs or is over
+function nextWeekCompoLine(vienna, sunday)
+{
+    const nextStart = viennaWallToInstant(vienna.year, vienna.month, sunday + 7, COMPO_START.hour, COMPO_START.minute, 0);
+    return `(Upcoming compo, next week: **2HTS${getCompoIdAt(nextStart)}** starts ${discordTime(nextStart, "F")} (${discordTime(nextStart, "R")}))`;
+}
+
 function handle2HTSTime(now = Date.now())
 {
     const embed = new Discord.EmbedBuilder()
@@ -121,7 +128,7 @@ function handle2HTSTime(now = Date.now())
 
     // Every message has the same shape: a timer/status line, the one compo link, a blank line, the stream link.
     // The compo page may not exist yet for an upcoming compo, but it is always linked. There is no "previous" compo.
-    let statusLine, compoLine;
+    let statusLine, compoLine, upcomingLine = "";
 
     if (now >= compoStart && now < compoEnd)
     {
@@ -130,12 +137,14 @@ function handle2HTSTime(now = Date.now())
         // static countdown, kept in case it is brought back:
         // statusLine += `\nTime left to compose: ${secToStr(Math.floor((compoEnd - now) / 1000))}`;
         compoLine = `**2HTS${compoId}** in progress: ${compoUrl(compoId)}`;
+        upcomingLine = nextWeekCompoLine(vienna, sunday);
     }
     else if (now >= compoEnd && now < compoMidnight)
     {
         // listening party, until midnight
         statusLine = "Tune in to our listening party, and we hope to see you again next Sunday!";
         compoLine = `**2HTS${compoId}** in progress: ${compoUrl(compoId)}`;
+        upcomingLine = nextWeekCompoLine(vienna, sunday);
     }
     else
     {
@@ -146,7 +155,8 @@ function handle2HTSTime(now = Date.now())
         compoLine = `**2HTS${compoId}** upload page: ${compoUrl(compoId)}`;
     }
 
-    embed.setDescription(`${statusLine}\n${compoLine}\n\nLink to Chorus: ${partylink}`);
+    const description = `${statusLine}\n${compoLine}\n\nLink to Chorus: ${partylink}`;
+    embed.setDescription(upcomingLine ? `${description}\n\n${upcomingLine}` : description);
     return embed;
 }
 
