@@ -1,6 +1,6 @@
-# Two HTS Time Fairy
+# 2HTS Time Fairy
 
-A Discord bot for the 2HTS community. It is a reboot of the discontinued 2HTSTimeBot: it answers time questions and offers small utilities, mini games and a bit of silliness.
+A Discord bot for the 2HTS community. It is a reboot of the discontinued 2HTSTimeBot: it answers time questions and offers small utilities, mini games and adds a bit of silliness.
 
 ## Features
 
