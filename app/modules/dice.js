@@ -47,7 +47,7 @@ function rollDice(diceNotation, advantage = null)
 
     // Roll the dice and store the individual rolls
     const rolls = [];
-    let total = 0;
+    let total;
     for (let i = 0; i < numDice; i++)
     {
         const roll = Math.floor(Math.random() * numSides) + 1;
