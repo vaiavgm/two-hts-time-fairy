@@ -75,6 +75,16 @@ All settings live in `.env` (see `.env.example`).
 - If 10 unexpected errors happen within a minute, a fatal login problem occurs, or Discord invalidates the session, the bot waits 15 seconds and exits with code 1. The delay stops a host that restarts it immediately from using up Discord's daily limit of new gateway sessions. Turn on automatic restart after a crash in your host's panel, otherwise the bot stays offline after such an exit.
 - A stop or restart signal (SIGTERM, e.g. from a host panel) or Ctrl+C closes the Discord connection and exits with code 0. A second signal exits at once.
 
+### Automatic restart on push
+
+`.github/workflows/restart-bot.yml` restarts the bot on the SparkedHost panel after every push or merge into `main` (changes to only docs, tests or Markdown are skipped). The panel's startup command then runs `git pull` and `npm install`, so the new code goes live. It can also be started by hand under Actions → Restart bot → Run workflow.
+
+1. In the panel, open Account → API Credentials and create a key.
+2. In GitHub, open the repo's Settings → Secrets and variables → Actions and add the secret `PANEL_API_KEY` with that key.
+3. Optional repository variables: `PANEL_URL` (default `https://control.sparkedhost.us`) and `PANEL_SERVER_ID` (default `2e318161`).
+
+If the run fails with HTTP 401 or 403 and an HTML page, the key is wrong or Cloudflare blocked the request.
+
 ## Commands for server admins
 
 `/admin` is visible to everybody in the command picker. Its actions are limited to bot admins, server Administrators and members with the `@moderator` role.
