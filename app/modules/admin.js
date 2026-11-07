@@ -1,6 +1,6 @@
 const { InteractionContextType, MessageFlags, SlashCommandBuilder } = require("discord.js");
-const { isAdmin } = require("../system/auth");
-const { GAME_APPS, GAME_ACTIONS, mayControlGames, runGameAction } = require("../system/game-admin");
+const { canControlGames, isAdmin } = require("../system/auth");
+const { GAME_APPS, GAME_ACTIONS, runGameAction } = require("../system/game-admin");
 const slash_functions = require("../system/slash-commands");
 const { relaySettings } = require("../system/now-playing");
 const trackChannels = require("../system/track-channels");
@@ -138,7 +138,7 @@ module.exports = {
         }
 
         // Game actions are open to moderators too; everything else is for bot admins only
-        const allowed = app.kind === "game" ? mayControlGames(user, interaction.member) : isAdmin(user);
+        const allowed = app.kind === "game" ? canControlGames(user, interaction.member) : isAdmin(user);
         if (!allowed)
         {
             console.log(`[ADMIN] Denied ${user.username} (ID ${user.id})`);
